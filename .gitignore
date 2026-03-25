@@ -1,0 +1,29 @@
+# dependencies
+node_modules
+
+# build output
+dist
+
+# environment variables
+.env
+.env.*
+!.env.example
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Supabase
+supabase/.temp
+
+# logs
+*.log
+npm-debug.log*
+
+# MCP config (contains API tokens)
+mcp.json
