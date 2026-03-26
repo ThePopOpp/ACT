@@ -500,9 +500,9 @@ export function CampaignDetail() {
                   <span>{campaign.creator.campaignsCreated} campaigns</span>
                 </div>
               </div>
-              <button className="shrink-0 p-2 hover:bg-[#edf2f8] rounded-full transition-colors text-gray-500">
+              <Link to={`/profile/${campaign.creator.id}`} className="shrink-0 p-2 hover:bg-[#edf2f8] rounded-full transition-colors text-gray-500" title="View Creator Profile">
                 <ExternalLink size={16} />
-              </button>
+              </Link>
             </div>
 
             {/* Tabs */}

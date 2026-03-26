@@ -88,9 +88,9 @@ export function Dashboard() {
               <Link to="/create" className="flex items-center gap-1.5 px-5 py-2.5 bg-[#1a2d5a] hover:bg-[#142248] text-white text-sm rounded-xl font-semibold transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
                 <Plus size={15} /> New Campaign
               </Link>
-              <button className="p-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-gray-500">
+              <Link to="/profile" className="p-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-gray-500" title="Manage Profile">
                 <Settings size={16} />
-              </button>
+              </Link>
             </div>
           </div>
         </div>

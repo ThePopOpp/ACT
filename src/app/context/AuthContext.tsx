@@ -29,6 +29,10 @@ export interface AuthUser {
   avatar?: string;
   createdAt: string;
   status: 'active' | 'suspended';
+  // Profile fields (for all account types)
+  bio?: string;
+  location?: string;
+  schoolName?: string;
   // Business donor
   businessName?: string;
   businessTitle?: string;
@@ -60,6 +64,9 @@ interface AuthContextType {
   updateUserRole: (userId: string, role: UserRole) => void;
   updateUserStatus: (userId: string, status: 'active' | 'suspended') => void;
   deleteUser: (userId: string) => void;
+  updateUserProfile: (userId: string, updates: Partial<AuthUser>) => void;
+  updateStudent: (parentId: string, studentId: string, updates: Partial<StudentAccount>) => void;
+  deleteStudent: (parentId: string, studentId: string) => void;
 }
 
 export interface IndividualRegisterData {
@@ -339,6 +346,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAllUsers(prev => prev.filter(u => u.id !== userId));
   };
 
+  const updateUserProfile = (userId: string, updates: Partial<AuthUser>) => {
+    setAllUsers(prev =>
+      prev.map(u =>
+        u.id === userId ? { ...u, ...updates } : u
+      )
+    );
+  };
+
+  const updateStudent = (parentId: string, studentId: string, updates: Partial<StudentAccount>) => {
+    setAllUsers(prev =>
+      prev.map(u => {
+        if (u.id === parentId) {
+          return {
+            ...u,
+            students: u.students?.map(s =>
+              s.id === studentId ? { ...s, ...updates } : s
+            ),
+          };
+        }
+        return u;
+      })
+    );
+  };
+
+  const deleteStudent = (parentId: string, studentId: string) => {
+    setAllUsers(prev =>
+      prev.map(u => {
+        if (u.id === parentId) {
+          return {
+            ...u,
+            students: u.students?.filter(s => s.id !== studentId),
+          };
+        }
+        return u;
+      })
+    );
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -359,6 +404,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateUserRole,
         updateUserStatus,
         deleteUser,
+        updateUserProfile,
+        updateStudent,
+        deleteStudent,
       }}
     >
       {children}

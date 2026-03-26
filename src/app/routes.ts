@@ -4,6 +4,7 @@ import { Home } from './pages/Home';
 import { Browse } from './pages/Browse';
 import { CampaignDetail } from './pages/CampaignDetail';
 import { CreateCampaign } from './pages/CreateCampaign';
+import { EditCampaign } from './pages/EditCampaign';
 import { Dashboard } from './pages/Dashboard';
 import { Admin } from './pages/Admin';
 import { SuperAdmin } from './pages/SuperAdmin';
@@ -16,6 +17,8 @@ import { RegisterStudent } from './pages/RegisterStudent';
 import { FAQ } from './pages/FAQ';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
+import { ProfileManagement } from './pages/ProfileManagement';
+import { PublicProfile } from './pages/PublicProfile';
 
 export const router = createBrowserRouter([
   {
@@ -26,7 +29,10 @@ export const router = createBrowserRouter([
       { path: 'browse', Component: Browse },
       { path: 'campaign/:id', Component: CampaignDetail },
       { path: 'create', Component: CreateCampaign },
+      { path: 'campaign/:campaignId/edit', Component: EditCampaign },
       { path: 'dashboard', Component: Dashboard },
+      { path: 'profile', Component: ProfileManagement },
+      { path: 'profile/:userId', Component: PublicProfile },
       { path: 'admin', Component: Admin },
       { path: 'how-it-works', Component: Home },
       { path: 'about', Component: About },

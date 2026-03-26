@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import {
   TrendingUp, Users, DollarSign, BarChart2,
-  CheckCircle, Clock, Eye, Search, ChevronUp, ChevronDown,
+  CheckCircle, Clock, Eye, Search, ChevronUp, ChevronDown, Edit2,
 } from 'lucide-react';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
@@ -259,9 +259,14 @@ export function Admin() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <Link to={`/campaign/${c.id}`} className="p-1.5 hover:bg-[#edf2f8] rounded-lg text-gray-400 hover:text-[#1a2d5a] transition-colors inline-block">
-                              <Eye size={14} />
-                            </Link>
+                            <div className="flex gap-1">
+                              <Link to={`/campaign/${c.id}`} className="p-1.5 hover:bg-[#edf2f8] rounded-lg text-gray-400 hover:text-[#1a2d5a] transition-colors inline-block" title="View campaign">
+                                <Eye size={14} />
+                              </Link>
+                              <Link to={`/campaign/${c.id}/edit`} className="p-1.5 hover:bg-blue-50 rounded-lg text-gray-400 hover:text-blue-600 transition-colors inline-block" title="Edit campaign">
+                                <Edit2 size={14} />
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       );

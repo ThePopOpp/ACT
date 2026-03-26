@@ -442,6 +442,105 @@ export const CAMPAIGNS: Campaign[] = [
     updates: [],
     faqs: [],
   },
+
+  // ── 13. JEREMY WATERS ───────────────────────────────────────────────────
+  {
+    id: '13',
+    title: 'Support Jace Waters at Valley Christian School',
+    tagline: 'Help fund a vibrant, Christ-centered 5th grade education for this young leader.',
+    story: `**About Jace**\nThe Waters family is committed to raising their children with a strong foundation of faith, character, and purpose. Their son, Jace, is currently in 5th grade at Valley Christian School, where he is growing both academically and spiritually in a Christ-centered environment.\n\n**Valley Christian's Impact**\nValley Christian has been an incredible blessing for Jace, providing not only a high level of education but also reinforcing the values that are taught at home. Through daily faith integration, meaningful relationships, and a supportive community, Jace is developing into a young leader with a heart for others.\n\n**The Challenge**\nLike many families, the cost of private Christian education can be a challenge. Through the Arizona Christian Tuition Organization, you have the opportunity to directly support students like Jace and help make this life-changing education possible.\n\n**How Your Support Helps**\nYour donation will go toward tuition assistance, helping Jace continue his education at Valley Christian School. Every contribution makes a meaningful impact and helps ease the financial burden on the family.\n\n**Thank You**\nThank you for considering a donation and for supporting families who value faith-based education. Your generosity helps shape the next generation.`,
+    category: 'Elementary Schools',
+    goal: 15000,
+    raised: 0,
+    backers: 0,
+    daysLeft: 90,
+    image: 'https://arizonachristiantuition.com/wp-content/uploads/2026/03/vcs_photo_2.avif',
+    tags: ['Valley Christian', '5th Grade', 'Elementary', 'Tax Credit'],
+    featured: false,
+    status: 'active',
+    createdAt: '2026-03-26',
+    creator: {
+      id: 'jeremy_waters', name: 'Jeremy Waters', avatar: 'https://arizonachristiantuition.com/wp-content/uploads/2025/12/JW1-150x150.png',
+      bio: 'Proud parent at Valley Christian School. Committed to providing a Christ-centered education for Jace.',
+      campaignsCreated: 1, location: 'Phoenix, AZ',
+    },
+    pledgeTiers: [
+      { id: 't1', title: 'Faith Friend', amount: 250, description: 'Support one month of Jace\'s education.', perks: ['Tax credit receipt', 'Thank-you note from family', 'Campaign updates'], claimed: 0, eta: 'Aug 2026' },
+      { id: 't2', title: 'Semester Sponsor', amount: 1500, description: 'Fund one semester of tuition.', perks: ['Tax credit receipt', 'Named recognition', 'Family update letter', 'End-of-year report'], claimed: 0, limit: 10, eta: 'Aug 2026' },
+      { id: 't3', title: 'Year-Long Partner', amount: 3750, description: 'Fully fund one academic year.', perks: ['All above perks', 'Named scholarship', 'Family dinner invitation', 'Annual impact letter'], claimed: 0, limit: 4, eta: 'Aug 2026' },
+    ],
+    updates: [],
+    faqs: [
+      { question: 'How will the funds be used?', answer: 'All funds go directly to Valley Christian School as tuition assistance for the Waters family. The school will apply the donation to reduce family tuition payments.' },
+      { question: 'Is this tax-deductible?', answer: 'Yes! Your donation qualifies for Arizona\'s Private School Tax Credit under A.R.S. § 43-1089. You can redirect up to $1,459 (single) or $2,918 (married) annually.' },
+    ],
+  },
+
+  // ── 14. CHRIS LEAVITT ───────────────────────────────────────────────────
+  {
+    id: '14',
+    title: 'Invest in the Future of the Leavitt Family',
+    tagline: 'Supporting a generational investment in Christ-centered education at Valley Christian School.',
+    story: `**The Leavitt Family Vision**\nThe Leavitt family believes deeply in the importance of providing their children with a Christ-centered education—one that builds strong character, faith, and academic excellence. Valley Christian School has been a vital part of that journey, creating an environment where their children can thrive both in the classroom and in their spiritual walk.\n\n**Valley Christian's Difference**\nWith a focus on leadership, integrity, and purpose, Valley Christian is helping shape the next generation to stand firm in their beliefs while pursuing excellence in all areas of life.\n\n**The Financial Reality**\nHowever, the investment in private Christian education can be significant. Through ACTSTO, families like the Leavitts are able to receive support that makes this opportunity attainable.\n\n**How Your Support Helps**\nYour contribution directly supports tuition assistance for the Leavitt family, helping ensure their children can continue receiving a Christ-centered education at Valley Christian School.\n\n**Join Us in This Mission**\nEvery donation, big or small, makes a difference. Thank you for partnering with the Leavitt family and investing in the future of their children. Together, we're building generations of faithful, excellent leaders.`,
+    category: 'Elementary Schools',
+    goal: 15000,
+    raised: 0,
+    backers: 0,
+    daysLeft: 90,
+    image: 'https://arizonachristiantuition.com/wp-content/uploads/2026/03/vcs_photo_4-1536x864.jpg',
+    tags: ['Valley Christian', 'Multiple Children', 'Elementary', 'Tax Credit'],
+    featured: false,
+    status: 'active',
+    createdAt: '2026-03-26',
+    creator: {
+      id: 'chris_leavitt', name: 'Chris Leavitt', avatar: 'https://arizonachristiantuition.com/wp-content/uploads/2025/12/SS1-150x150.png',
+      bio: 'Passionate about providing our children with a faith-based, academically rigorous education at Valley Christian.',
+      campaignsCreated: 1, location: 'Phoenix, AZ',
+    },
+    pledgeTiers: [
+      { id: 't1', title: 'Blessing Partner', amount: 250, description: 'Support one month of education for the Leavitt children.', perks: ['Tax credit receipt', 'Family thank-you note', 'Campaign updates'], claimed: 0, eta: 'Aug 2026' },
+      { id: 't2', title: 'Legacy Sponsor', amount: 1500, description: 'Fund one semester of tuition for all children.', perks: ['Tax credit receipt', 'Named recognition', 'Family letter', 'Year-end impact update'], claimed: 0, limit: 10, eta: 'Aug 2026' },
+      { id: 't3', title: 'Generational Partner', amount: 3750, description: 'Fully fund one academic year for the entire family.', perks: ['All above perks', 'Named family scholarship', 'Family gathering invitation', 'Annual recognition'], claimed: 0, limit: 4, eta: 'Aug 2026' },
+    ],
+    updates: [],
+    faqs: [
+      { question: 'How many children are in the family?', answer: 'The Leavitt family has multiple children at Valley Christian School, all benefiting from tuition assistance made possible through your support.' },
+      { question: 'Is my donation tax-credited?', answer: 'Yes! Your donation qualifies for the Arizona Private School Tax Credit under A.R.S. § 43-1089, allowing you to redirect up to $1,459 (single) or $2,918 (married) of your state taxes.' },
+    ],
+  },
+
+  // ── 15. SCOTT SPAULDING ─────────────────────────────────────────────────
+  {
+    id: '15',
+    title: 'Help the Spaulding Family Continue Christian Education',
+    tagline: 'Bridging the gap so the Spaulding children can thrive at Valley Christian School.',
+    story: `**A Foundation Built on Faith**\nFor the Spaulding family, choosing Valley Christian School means choosing an education rooted in faith, purpose, and excellence. Their children are being equipped not only with strong academics, but also with the values and principles that will guide them throughout their lives.\n\n**The Valley Christian Experience**\nValley Christian provides a unique environment where students are encouraged to grow spiritually, build meaningful relationships, and develop into confident, faith-driven individuals. Every aspect of the day—from classes to chapel to extracurricular activities—reinforces biblical values alongside academic rigor.\n\n**Making It Possible**\nWhile the impact of this education is invaluable, the financial commitment can be challenging. Through ACTSTO, generous donors have the opportunity to come alongside families like the Spauldings to help make this possible.\n\n**How Your Support Helps**\nYour donation provides direct tuition assistance, helping the Spaulding family continue their children's education at Valley Christian School. This support reduces financial stress on the family and allows them to focus on what matters most: their children's growth and development.\n\n**Thank You**\nWe are grateful for your support and partnership. Together, we can help provide a strong foundation for the next generation. Your generosity is more than a donation—it's an investment in young lives shaped by faith, integrity, and excellence.`,
+    category: 'Elementary Schools',
+    goal: 15000,
+    raised: 0,
+    backers: 0,
+    daysLeft: 90,
+    image: 'https://arizonachristiantuition.com/wp-content/uploads/2026/03/vcs_photo_7.jpg',
+    tags: ['Valley Christian', 'Multiple Children', 'Elementary', 'Tax Credit'],
+    featured: false,
+    status: 'active',
+    createdAt: '2026-03-26',
+    creator: {
+      id: 'scott_spaulding', name: 'Scott Spaulding', avatar: 'https://arizonachristiantuition.com/wp-content/uploads/2025/12/SS1-150x150.png',
+      bio: 'Committed to a Christ-centered education for my family at Valley Christian School in Phoenix.',
+      campaignsCreated: 1, location: 'Phoenix, AZ',
+    },
+    pledgeTiers: [
+      { id: 't1', title: 'Growth Partner', amount: 250, description: 'Support one month of the Spaulding children\'s education.', perks: ['Tax credit receipt', 'Family gratitude note', 'Campaign updates'], claimed: 0, eta: 'Aug 2026' },
+      { id: 't2', title: 'Impact Sponsor', amount: 1500, description: 'Fund one semester of tuition assistance.', perks: ['Tax credit receipt', 'Named in family appreciation', 'Thank-you letter from children', 'Year-end report'], claimed: 0, limit: 10, eta: 'Aug 2026' },
+      { id: 't3', title: 'Covenant Partner', amount: 3750, description: 'Fully fund one academic year for the family.', perks: ['All above perks', 'Named family scholarship', 'Family appreciation dinner', 'Annual impact recognition'], claimed: 0, limit: 4, eta: 'Aug 2026' },
+    ],
+    updates: [],
+    faqs: [
+      { question: 'What makes Valley Christian special?', answer: 'Valley Christian integrates faith with academics, creating an environment where students grow spiritually and intellectually. Small class sizes, experienced faculty, and a biblical worldview are hallmarks of the school.' },
+      { question: 'Will I receive a tax credit?', answer: 'Absolutely! Your donation qualifies for Arizona\'s Private School Tax Credit under A.R.S. § 43-1089. Redirect up to $1,459 (single) or $2,918 (married) of your state tax liability.' },
+    ],
+  },
 ];
 
 export const MOCK_USER = {

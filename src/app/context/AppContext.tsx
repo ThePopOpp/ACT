@@ -15,6 +15,8 @@ interface AppContextType {
   user: typeof MOCK_USER;
   makePledge: (campaignId: string, tier: PledgeTier) => void;
   addCampaign: (campaign: Campaign) => void;
+  updateCampaign: (campaignId: string, updates: Partial<Campaign>) => void;
+  deleteCampaign: (campaignId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -47,8 +49,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCampaigns(prev => [campaign, ...prev]);
   };
 
+  const updateCampaign = (campaignId: string, updates: Partial<Campaign>) => {
+    setCampaigns(prev =>
+      prev.map(c =>
+        c.id === campaignId ? { ...c, ...updates } : c
+      )
+    );
+  };
+
+  const deleteCampaign = (campaignId: string) => {
+    setCampaigns(prev => prev.filter(c => c.id !== campaignId));
+  };
+
   return (
-    <AppContext.Provider value={{ campaigns, pledges, user: MOCK_USER, makePledge, addCampaign }}>
+    <AppContext.Provider value={{ campaigns, pledges, user: MOCK_USER, makePledge, addCampaign, updateCampaign, deleteCampaign }}>
       {children}
     </AppContext.Provider>
   );
