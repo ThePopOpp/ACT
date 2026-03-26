@@ -1,23 +1,11 @@
 import { Link } from 'react-router';
+import { useEffect, useRef } from 'react';
 import { ArrowRight, Heart, Shield, Globe, Zap, ChevronRight, Clock } from 'lucide-react';
 import { CampaignCard } from '../components/CampaignCard';
 import { useApp } from '../context/AppContext';
 import { CATEGORIES } from '../data/mockData';
 
-const CATEGORY_ICONS: Record<string, string> = {
-  PreSchools: '🧸',
-  'Elementary Schools': '✏️',
-  'Middle Schools': '📖',
-  'High Schools': '🎓',
-  'Trade Schools': '🔧',
-  'Private Schools': '🏛️',
-  STEM: '🔬',
-  Vocational: '🛠️',
-  Scholarships: '🏅',
-  'Business Schools': '💼',
-  'Music School': '🎵',
-  'All Grades': '🏫',
-};
+
 
 const STATS = [
   { label: 'Tax Credits Donated', value: '$8.2M', sub: 'redirected to Christian schools' },
@@ -35,6 +23,51 @@ const HOW_IT_WORKS = [
 
 export function Home() {
   const { campaigns } = useApp();
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = categoryScrollRef.current;
+    if (!container) return;
+
+    let animationFrame: number;
+    let isPaused = false;
+
+    const scroll = () => {
+      if (!container || isPaused) return;
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      if (maxScroll <= 0) {
+        animationFrame = requestAnimationFrame(scroll);
+        return;
+      }
+
+      container.scrollLeft += 0.6; // speed
+      if (container.scrollLeft >= maxScroll) {
+        container.scrollLeft = 0;
+      }
+      animationFrame = requestAnimationFrame(scroll);
+    };
+
+    const handleMouseEnter = () => {
+      isPaused = true;
+    };
+
+    const handleMouseLeave = () => {
+      isPaused = false;
+      animationFrame = requestAnimationFrame(scroll);
+    };
+
+    container.addEventListener('mouseenter', handleMouseEnter);
+    container.addEventListener('mouseleave', handleMouseLeave);
+
+    animationFrame = requestAnimationFrame(scroll);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      container.removeEventListener('mouseenter', handleMouseEnter);
+      container.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
+
   const featured = campaigns.filter(c => c.featured).slice(0, 4);
   const trending = campaigns
     .filter(c => !c.featured)
@@ -153,22 +186,24 @@ export function Home() {
           >
             Browse by School Type
           </h2>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-3">
-            {CATEGORIES.map(cat => (
-              <Link
-                key={cat}
-                to={`/browse?category=${encodeURIComponent(cat)}`}
-                className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[#edf2f8] hover:border-[#1a2d5a]/30 border border-gray-100 transition-all group"
-              >
-                <span className="text-2xl">{CATEGORY_ICONS[cat]}</span>
-                <span
-                  className="text-xs text-gray-600 group-hover:text-[#1a2d5a] font-medium text-center leading-tight"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
+          <div className="relative overflow-x-hidden py-1" style={{ overflowY: 'hidden', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+            <div ref={categoryScrollRef} className="flex items-center min-w-max gap-2 sm:gap-3" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+              <style>{`div::-webkit-scrollbar { display: none; }`}</style>
+              {CATEGORIES.map(cat => (
+                <Link
+                  key={cat}
+                  to={`/browse?category=${encodeURIComponent(cat)}`}
+                  className="flex items-center justify-center p-2 sm:p-3 rounded-lg hover:bg-[#edf2f8] hover:border-[#1a2d5a]/30 border border-gray-100 transition-all whitespace-nowrap"
                 >
-                  {cat}
-                </span>
-              </Link>
-            ))}
+                  <span
+                    className="text-sm sm:text-base text-gray-700 group-hover:text-[#1a2d5a] font-medium"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                  >
+                    {cat}
+                  </span>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </section>

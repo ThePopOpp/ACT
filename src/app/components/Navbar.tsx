@@ -40,8 +40,10 @@ export function Navbar() {
     { label: 'Explore', to: '/browse' },
     { label: 'Resources', to: '/how-it-works' },
     { label: 'Campaigns', to: '/browse' },
-    { label: 'Contact', to: '/how-it-works' },
+    { label: 'Contact', to: '/contact' },
   ];
+
+  // Ensure we don't render duplicate contact links in the main navbar section.
 
   const displayName = currentUser
     ? currentUser.nickname || currentUser.firstName
@@ -88,9 +90,9 @@ export function Navbar() {
               {resourcesMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setResourcesMenuOpen(false)} />
-                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-[600px] bg-white rounded-2xl border border-gray-200 shadow-2xl z-50 overflow-hidden">
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-[800px] bg-white rounded-2xl border border-gray-200 shadow-2xl z-50 overflow-hidden">
                     <div className="p-6">
-                      <div className="grid grid-cols-2 gap-6">
+                      <div className="grid grid-cols-3 gap-6">
                         {/* Column 1: Learn & Info */}
                         <div>
                           <h3
@@ -168,23 +170,6 @@ export function Navbar() {
                                 </div>
                               </div>
                             </Link>
-                            <Link
-                              to="/news"
-                              onClick={() => setResourcesMenuOpen(false)}
-                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#e8eef5] transition-colors group"
-                            >
-                              <div className="w-8 h-8 rounded-lg bg-[#1a2d5a]/10 flex items-center justify-center group-hover:bg-[#1a2d5a]/20 transition-colors">
-                                <Newspaper size={16} className="text-[#1a2d5a]" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="text-sm font-semibold text-[#1a2d5a]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                                  In The News
-                                </div>
-                                <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
-                                  Latest updates & blog
-                                </div>
-                              </div>
-                            </Link>
                           </div>
                         </div>
 
@@ -248,44 +233,102 @@ export function Navbar() {
                                 </div>
                               </div>
                             </a>
+                            <Link
+                              to="/news"
+                              onClick={() => setResourcesMenuOpen(false)}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#e8eef5] transition-colors group"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-[#1a2d5a]/10 flex items-center justify-center group-hover:bg-[#1a2d5a]/20 transition-colors">
+                                <Newspaper size={16} className="text-[#1a2d5a]" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="text-sm font-semibold text-[#1a2d5a]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  In The News
+                                </div>
+                                <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  Latest updates & blog
+                                </div>
+                              </div>
+                            </Link>
                           </div>
+                        </div>
 
-                          <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
-                            {!isAuthenticated && (
-                              <Link
-                                to="/register"
-                                onClick={() => setResourcesMenuOpen(false)}
-                                className="block w-full px-4 py-2.5 bg-[#1a2d5a] hover:bg-[#142248] text-white text-center text-sm font-semibold rounded-lg transition-colors"
-                                style={{ fontFamily: 'Inter, sans-serif' }}
-                              >
-                                Sign Up
-                              </Link>
-                            )}
-                            {!isAuthenticated && (
-                              <Link
-                                to="/login"
-                                onClick={() => setResourcesMenuOpen(false)}
-                                className="block w-full px-4 py-2.5 border-2 border-[#1a2d5a] text-[#1a2d5a] hover:bg-[#e8eef5] text-center text-sm font-semibold rounded-lg transition-colors"
-                                style={{ fontFamily: 'Inter, sans-serif' }}
-                              >
-                                Login
-                              </Link>
-                            )}
+                        {/* Column 3: Account & Campaign */}
+                        <div>
+                          <h3
+                            className="text-[#1a2d5a] text-xs font-bold uppercase tracking-wider mb-3 px-2"
+                            style={{ fontFamily: 'Inter, sans-serif' }}
+                          >
+                            Quick Actions
+                          </h3>
+                          <div className="space-y-1">
+                            <Link
+                              to="/register"
+                              onClick={() => setResourcesMenuOpen(false)}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#e8eef5] transition-colors group"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-[#1a2d5a]/10 flex items-center justify-center group-hover:bg-[#1a2d5a]/20 transition-colors">
+                                <User size={16} className="text-[#1a2d5a]" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="text-sm font-semibold text-[#1a2d5a]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  Sign Up
+                                </div>
+                                <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  Create an account
+                                </div>
+                              </div>
+                            </Link>
+                            <Link
+                              to="/login"
+                              onClick={() => setResourcesMenuOpen(false)}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#e8eef5] transition-colors group"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-[#1a2d5a]/10 flex items-center justify-center group-hover:bg-[#1a2d5a]/20 transition-colors">
+                                <LogOut size={16} className="text-[#1a2d5a]" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="text-sm font-semibold text-[#1a2d5a]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  Login
+                                </div>
+                                <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  Access your account
+                                </div>
+                              </div>
+                            </Link>
                             <Link
                               to="/create"
                               onClick={() => setResourcesMenuOpen(false)}
-                              className="block w-full px-4 py-2.5 bg-[#c8202d] hover:bg-[#a01825] text-white text-center text-sm font-semibold rounded-lg transition-colors"
-                              style={{ fontFamily: 'Inter, sans-serif' }}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#e8eef5] transition-colors group"
                             >
-                              Create Campaign
+                              <div className="w-8 h-8 rounded-lg bg-[#c8202d]/10 flex items-center justify-center group-hover:bg-[#c8202d]/20 transition-colors">
+                                <Shield size={16} className="text-[#c8202d]" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="text-sm font-semibold text-[#1a2d5a]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  Create Campaign
+                                </div>
+                                <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  Start a new campaign
+                                </div>
+                              </div>
                             </Link>
                             <Link
                               to="/browse"
                               onClick={() => setResourcesMenuOpen(false)}
-                              className="block w-full px-4 py-2.5 border-2 border-gray-200 text-gray-700 hover:bg-[#e8eef5] hover:border-[#1a2d5a]/40 text-center text-sm font-semibold rounded-lg transition-colors"
-                              style={{ fontFamily: 'Inter, sans-serif' }}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#e8eef5] transition-colors group"
                             >
-                              Support Campaign
+                              <div className="w-8 h-8 rounded-lg bg-[#c8202d]/10 flex items-center justify-center group-hover:bg-[#c8202d]/20 transition-colors">
+                                <HeartHandshake size={16} className="text-[#c8202d]" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="text-sm font-semibold text-[#1a2d5a]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  Support Campaign
+                                </div>
+                                <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  Donate to active campaigns
+                                </div>
+                              </div>
                             </Link>
                           </div>
                         </div>
@@ -303,8 +346,12 @@ export function Navbar() {
               Campaigns
             </Link>
             <Link
-              to="/how-it-works"
-              className="px-3 py-2 rounded-lg text-sm transition-colors font-medium text-[#1a2d5a] hover:text-[#c8202d]"
+              to="/contact"
+              className={`px-3 py-2 rounded-lg text-sm transition-colors font-medium ${
+                location.pathname === '/contact'
+                  ? 'text-[#c8202d]'
+                  : 'text-[#1a2d5a] hover:text-[#c8202d]'
+              }`}
             >
               Contact
             </Link>

@@ -13,6 +13,9 @@ import { RegisterIndividual } from './pages/RegisterIndividual';
 import { RegisterBusiness } from './pages/RegisterBusiness';
 import { RegisterParent } from './pages/RegisterParent';
 import { RegisterStudent } from './pages/RegisterStudent';
+import { FAQ } from './pages/FAQ';
+import { About } from './pages/About';
+import { Contact } from './pages/Contact';
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +29,9 @@ export const router = createBrowserRouter([
       { path: 'dashboard', Component: Dashboard },
       { path: 'admin', Component: Admin },
       { path: 'how-it-works', Component: Home },
+      { path: 'about', Component: About },
+      { path: 'faq', Component: FAQ },
+      { path: 'contact', Component: Contact },
       { path: 'login', Component: Login },
       { path: 'register', Component: Register },
       { path: 'register/individual', Component: RegisterIndividual },

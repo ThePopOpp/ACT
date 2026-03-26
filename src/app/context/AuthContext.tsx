@@ -108,8 +108,8 @@ const SESSION_KEY = 'act_current_user_id';
 // Seed super admin account
 const SEED_SUPER_ADMIN: AuthUser = {
   id: 'super_admin_1',
-  email: 'admin@arizonachristiantuition.com',
-  password: 'ACTAdmin2026!',
+  email: import.meta.env.VITE_ADMIN_EMAIL || 'admin@arizonachristiantuition.com',
+  password: import.meta.env.VITE_ADMIN_PASSWORD || '',
   accountType: 'individual_donor',
   role: 'super_admin',
   firstName: 'ACT',

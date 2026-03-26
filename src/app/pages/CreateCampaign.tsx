@@ -107,6 +107,7 @@ export function CreateCampaign() {
   const [category, setCategory] = useState('');
   const [goal, setGoal] = useState('');
   const [duration, setDuration] = useState('30');
+  const [customDuration, setCustomDuration] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [story, setStory] = useState('');
   const [tiers, setTiers] = useState<GivingTier[]>([{ ...EMPTY_TIER }]);
@@ -143,7 +144,10 @@ export function CreateCampaign() {
     setTiers(prev => prev.map((t, idx) => idx === i ? { ...t, [field]: val } : t));
 
   const canProceed = () => {
-    if (step === 0) return title.trim() && tagline.trim() && category && goal && Number(goal) > 0 && story.trim().length > 20;
+    if (step === 0) {
+      const durationValue = duration === 'custom' ? Number(customDuration) : Number(duration);
+      return title.trim() && tagline.trim() && category && goal && Number(goal) > 0 && story.trim().length > 20 && durationValue > 0;
+    }
     if (step === 1) return parentFirstName.trim() && parentLastName.trim() && parentEmail.trim();
     if (step === 2) return studentFirstName.trim() && studentLastName.trim();
     if (step === 3) return schoolName.trim() && schoolAddress.trim() && schoolCity.trim() && schoolState && termsAgreed;
@@ -220,7 +224,7 @@ export function CreateCampaign() {
   return (
     <div className="min-h-screen bg-[#e8eef5]">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-[#e8eef5] border-b border-[#d3def1]">
         <div className="max-w-4xl mx-auto px-6 pt-8 pb-0">
           <h1
             className="text-center text-[#c8202d] mb-8"
@@ -230,19 +234,20 @@ export function CreateCampaign() {
           </h1>
 
           {/* Step indicator — matches screenshot style */}
-          <div className="flex items-start justify-center gap-0 mb-0">
+          <div className="mx-auto max-w-md">
+            <div className="flex justify-center gap-6">
             {STEPS.map((s, i) => {
               const done = i < step;
               const active = i === step;
               return (
-                <div key={s.key} className="flex flex-col items-center" style={{ minWidth: 90 }}>
-                  <div className="flex items-center w-full">
+                <div key={s.key} className="flex flex-col items-center text-center" style={{ minWidth: 90 }}>
+                  <div className="flex items-center">
                     {i > 0 && (
-                      <div className={`flex-1 h-0.5 mt-0 ${done ? 'bg-[#1a2d5a]' : 'bg-gray-200'}`} />
+                      <div className={`h-0.5 w-8 ${i - 1 < step ? 'bg-[#1a2d5a]' : 'bg-gray-200'}`} />
                     )}
                     <button
                       onClick={() => done && setStep(i)}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 shrink-0 transition-all ${
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-all ${
                         done ? 'bg-[#1a2d5a] border-[#1a2d5a] text-white cursor-pointer' :
                         active ? 'bg-[#1a2d5a] border-[#1a2d5a] text-white' :
                         'bg-white border-gray-300 text-gray-400 cursor-default'
@@ -251,11 +256,11 @@ export function CreateCampaign() {
                       {done ? <Check size={16} /> : i + 1}
                     </button>
                     {i < STEPS.length - 1 && (
-                      <div className={`flex-1 h-0.5 ${done ? 'bg-[#1a2d5a]' : 'bg-gray-200'}`} />
+                      <div className={`h-0.5 w-8 ${i < step ? 'bg-[#1a2d5a]' : 'bg-gray-200'}`} />
                     )}
                   </div>
                   <span
-                    className={`text-xs mt-2 font-medium ${active ? 'text-[#1a2d5a]' : done ? 'text-[#1a2d5a]' : 'text-gray-400'}`}
+                    className={`text-xs font-medium mt-2 ${active ? 'text-[#1a2d5a]' : done ? 'text-[#1a2d5a]' : 'text-gray-400'}`}
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     {s.label}
@@ -263,6 +268,7 @@ export function CreateCampaign() {
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
       </div>
@@ -307,14 +313,41 @@ export function CreateCampaign() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>Campaign Duration</label>
                 <div className="flex gap-2">
                   {['15', '30', '45', '60'].map(d => (
-                    <button key={d} type="button" onClick={() => setDuration(d)}
+                    <button key={d} type="button" onClick={() => { setDuration(d); setCustomDuration(''); }}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-colors ${duration === d ? 'border-[#1a2d5a] bg-[#edf2f8] text-[#1a2d5a]' : 'border-gray-100 text-gray-600 hover:border-[#1a2d5a]/30'}`}
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       {d} days
                     </button>
                   ))}
+                  <button type="button" onClick={() => setDuration('custom')}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-colors ${duration === 'custom' ? 'border-[#1a2d5a] bg-[#edf2f8] text-[#1a2d5a]' : 'border-gray-100 text-gray-600 hover:border-[#1a2d5a]/30'}`}
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                  >
+                    Custom
+                  </button>
                 </div>
+                {duration === 'custom' && (
+                  <div className="mt-3">
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="Enter days (e.g. 75)"
+                      value={customDuration}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (/^\d*$/.test(val)) {
+                          setCustomDuration(val);
+                          if (val) setDuration(val);
+                        }
+                      }}
+                      className={`${inp} max-w-xs`}
+                    />
+                    <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Enter custom duration in days.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>

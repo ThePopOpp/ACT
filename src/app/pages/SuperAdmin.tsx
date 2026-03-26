@@ -137,8 +137,7 @@ function AccessGate({ onSuccess }: { onSuccess: () => void }) {
 
           <div className="mt-5 p-3 bg-white/5 rounded-xl border border-white/10">
             <p className="text-xs text-white/40 text-center" style={{ fontFamily: 'Inter, sans-serif' }}>
-              🔒 Demo credentials: <strong className="text-white/60">admin@arizonachristiantuition.com</strong><br />
-              Password: <strong className="text-white/60">ACTAdmin2026!</strong>
+              🔒 Authorized administrators only
             </p>
           </div>
         </div>
