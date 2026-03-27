@@ -59,7 +59,7 @@ export function RegisterStudent() {
   const handleRequestPermission = async () => {
     if (!form.parentEmail) { setErrors({ parentEmail: 'Parent email required to request permission.' }); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
+    // TODO: In the future, call a parent-approval email endpoint here
     setLoading(false);
     setPermissionRequested(true);
     toast.success('Permission request sent to your parent! 📧');
@@ -87,8 +87,7 @@ export function RegisterStudent() {
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    const result = registerStudent({
+    const result = await registerStudent({
       firstName: form.firstName, lastName: form.lastName, nickname: form.nickname,
       email: form.email, gradeLevel: form.gradeLevel, dateOfBirth: form.dateOfBirth,
       parentEmail: form.parentEmail || undefined,

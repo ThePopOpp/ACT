@@ -1,41 +1,114 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { CAMPAIGNS, MOCK_PLEDGES, MOCK_USER, Campaign, PledgeTier } from '../data/mockData';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { supabase } from '../../lib/supabase';
+import { dbCampaignToCampaign, campaignToDbInsert, dbPledgeToFrontendPledge } from '../../lib/mappers';
+import type { DbCampaign, DbPledge } from '../../lib/database.types';
+import type { Campaign, PledgeTier } from '../data/mockData';
+import { useAuth } from './AuthContext';
 
-interface Pledge {
+export interface PaymentMetadata {
+  paypalTransactionId?: string;
+  paypalOrderId?: string;
+  paymentMethod?: 'paypal' | 'mock';
+  payerEmail?: string;
+}
+
+export interface Pledge {
+  id?: string;
   campaignId: string;
   tierId: string;
   amount: number;
   date: string;
   status: 'confirmed';
+  paypalTransactionId?: string;
+  paypalOrderId?: string;
+  paymentMethod?: 'paypal' | 'mock';
+  payerEmail?: string;
 }
 
 interface AppContextType {
   campaigns: Campaign[];
   pledges: Pledge[];
-  user: typeof MOCK_USER;
-  makePledge: (campaignId: string, tier: PledgeTier) => void;
-  addCampaign: (campaign: Campaign) => void;
-  updateCampaign: (campaignId: string, updates: Partial<Campaign>) => void;
-  deleteCampaign: (campaignId: string) => void;
+  campaignsLoading: boolean;
+  pledgesLoading: boolean;
+  makePledge: (campaignId: string, tier: PledgeTier, payment?: PaymentMetadata, donorInfo?: Record<string, unknown>, taxInfo?: Record<string, unknown>) => Promise<void>;
+  addCampaign: (campaign: Campaign) => Promise<void>;
+  updateCampaign: (campaignId: string, updates: Partial<Campaign>) => Promise<void>;
+  deleteCampaign: (campaignId: string) => Promise<void>;
+  refreshCampaigns: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [campaigns, setCampaigns] = useState<Campaign[]>(CAMPAIGNS);
-  const [pledges, setPledges] = useState<Pledge[]>(MOCK_PLEDGES);
+  const { currentUser } = useAuth();
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [pledges, setPledges] = useState<Pledge[]>([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
+  const [pledgesLoading, setPledgesLoading] = useState(false);
 
-  const makePledge = (campaignId: string, tier: PledgeTier) => {
-    setPledges(prev => [
-      ...prev,
-      {
-        campaignId,
-        tierId: tier.id,
-        amount: tier.amount,
-        date: new Date().toISOString().split('T')[0],
-        status: 'confirmed',
-      },
-    ]);
+  // ── Load campaigns from Supabase on mount ────────────────────────────────
+  const refreshCampaigns = useCallback(async () => {
+    setCampaignsLoading(true);
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      setCampaigns((data as DbCampaign[]).map(dbCampaignToCampaign));
+    }
+    setCampaignsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    refreshCampaigns();
+  }, [refreshCampaigns]);
+
+  // ── Load user's pledges when auth changes ────────────────────────────────
+  useEffect(() => {
+    if (!currentUser) {
+      setPledges([]);
+      return;
+    }
+    setPledgesLoading(true);
+    supabase
+      .from('pledges')
+      .select('*')
+      .eq('donor_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) {
+          setPledges((data as DbPledge[]).map(dbPledgeToFrontendPledge));
+        }
+        setPledgesLoading(false);
+      });
+  }, [currentUser?.id]);
+
+  // ── Make a pledge (calls DB function for atomicity) ──────────────────────
+  const makePledge = async (
+    campaignId: string,
+    tier: PledgeTier,
+    payment?: PaymentMetadata,
+    donorInfo?: Record<string, unknown>,
+    taxInfo?: Record<string, unknown>
+  ) => {
+    const { error } = await supabase.rpc('make_pledge', {
+      p_campaign_id: campaignId,
+      p_donor_id: currentUser?.id ?? null,
+      p_tier_id: tier.id,
+      p_amount: tier.amount,
+      p_payment_method: payment?.paymentMethod ?? null,
+      p_paypal_transaction_id: payment?.paypalTransactionId ?? null,
+      p_paypal_order_id: payment?.paypalOrderId ?? null,
+      p_payer_email: payment?.payerEmail ?? null,
+      p_donor_info: donorInfo ?? null,
+      p_tax_info: taxInfo ?? null,
+    });
+
+    if (error) {
+      console.error('makePledge error:', error);
+    }
+
+    // Optimistically update local state, then refresh from DB
     setCampaigns(prev =>
       prev.map(c =>
         c.id === campaignId
@@ -43,26 +116,74 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : c,
       ),
     );
+    setPledges(prev => [
+      {
+        campaignId,
+        tierId: tier.id,
+        amount: tier.amount,
+        date: new Date().toISOString().split('T')[0],
+        status: 'confirmed',
+        ...payment,
+      },
+      ...prev,
+    ]);
+
+    // Background refresh for accurate data
+    refreshCampaigns();
   };
 
-  const addCampaign = (campaign: Campaign) => {
-    setCampaigns(prev => [campaign, ...prev]);
+  // ── Campaign CRUD ────────────────────────────────────────────────────────
+  const addCampaign = async (campaign: Campaign) => {
+    const row = campaignToDbInsert(campaign);
+    if (currentUser) {
+      (row as Record<string, unknown>).creator_profile_id = currentUser.id;
+    }
+    const { error } = await supabase.from('campaigns').insert(row);
+    if (!error) {
+      await refreshCampaigns();
+    }
   };
 
-  const updateCampaign = (campaignId: string, updates: Partial<Campaign>) => {
-    setCampaigns(prev =>
-      prev.map(c =>
-        c.id === campaignId ? { ...c, ...updates } : c
-      )
-    );
+  const updateCampaign = async (campaignId: string, updates: Partial<Campaign>) => {
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.tagline !== undefined) dbUpdates.tagline = updates.tagline;
+    if (updates.story !== undefined) dbUpdates.story = updates.story;
+    if (updates.category !== undefined) dbUpdates.category = updates.category;
+    if (updates.goal !== undefined) dbUpdates.goal = updates.goal;
+    if (updates.image !== undefined) dbUpdates.image = updates.image;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.featured !== undefined) dbUpdates.featured = updates.featured;
+    if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+    if (updates.pledgeTiers !== undefined) dbUpdates.pledge_tiers = updates.pledgeTiers;
+    if (updates.updates !== undefined) dbUpdates.updates = updates.updates;
+    if (updates.faqs !== undefined) dbUpdates.faqs = updates.faqs;
+
+    await supabase.from('campaigns').update(dbUpdates).eq('id', campaignId);
+    // Optimistic update then refresh
+    setCampaigns(prev => prev.map(c => c.id === campaignId ? { ...c, ...updates } : c));
+    refreshCampaigns();
   };
 
-  const deleteCampaign = (campaignId: string) => {
+  const deleteCampaign = async (campaignId: string) => {
+    await supabase.from('campaigns').delete().eq('id', campaignId);
     setCampaigns(prev => prev.filter(c => c.id !== campaignId));
   };
 
   return (
-    <AppContext.Provider value={{ campaigns, pledges, user: MOCK_USER, makePledge, addCampaign, updateCampaign, deleteCampaign }}>
+    <AppContext.Provider
+      value={{
+        campaigns,
+        pledges,
+        campaignsLoading,
+        pledgesLoading,
+        makePledge,
+        addCampaign,
+        updateCampaign,
+        deleteCampaign,
+        refreshCampaigns,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );

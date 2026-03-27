@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { supabase } from '../../lib/supabase';
+import { dbProfileToAuthUser, authUserToProfileInsert, dbStudentToStudentAccount } from '../../lib/mappers';
+import type { DbProfile, DbStudent } from '../../lib/database.types';
 
 export type AccountType = 'individual_donor' | 'business_donor' | 'parent' | 'student';
 export type UserRole = 'super_admin' | 'admin' | 'user';
@@ -19,7 +22,6 @@ export interface StudentAccount {
 export interface AuthUser {
   id: string;
   email: string;
-  password: string;
   accountType: AccountType;
   role: UserRole;
   firstName: string;
@@ -29,22 +31,20 @@ export interface AuthUser {
   avatar?: string;
   createdAt: string;
   status: 'active' | 'suspended';
-  // Profile fields (for all account types)
   bio?: string;
   location?: string;
   schoolName?: string;
-  // Business donor
   businessName?: string;
   businessTitle?: string;
   ein?: string;
-  // Parent
   students?: StudentAccount[];
-  // Student
   parentId?: string;
   dateOfBirth?: string;
   gradeLevel?: string;
   parentApproved?: boolean;
 }
+
+type AuthResult = Promise<{ success: boolean; message: string }>;
 
 interface AuthContextType {
   currentUser: AuthUser | null;
@@ -52,21 +52,24 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
   isAdmin: boolean;
-  login: (email: string, password: string) => { success: boolean; message: string };
-  logout: () => void;
-  registerIndividual: (data: IndividualRegisterData) => { success: boolean; message: string };
-  registerBusiness: (data: BusinessRegisterData) => { success: boolean; message: string };
-  registerParent: (data: ParentRegisterData) => { success: boolean; message: string };
-  registerStudent: (data: StudentRegisterData) => { success: boolean; message: string };
-  addStudentToParent: (parentId: string, student: Omit<StudentAccount, 'id' | 'parentId' | 'parentApproved'>) => void;
-  updateStudentPermission: (parentId: string, studentId: string, approved: boolean) => void;
+  loading: boolean;
+  login: (email: string, password: string) => AuthResult;
+  logout: () => Promise<void>;
+  registerIndividual: (data: IndividualRegisterData) => AuthResult;
+  registerBusiness: (data: BusinessRegisterData) => AuthResult;
+  registerParent: (data: ParentRegisterData) => AuthResult;
+  registerStudent: (data: StudentRegisterData) => AuthResult;
+  addStudentToParent: (parentId: string, student: Omit<StudentAccount, 'id' | 'parentId' | 'parentApproved'>) => Promise<void>;
+  updateStudentPermission: (parentId: string, studentId: string, approved: boolean) => Promise<void>;
   getStudentsForParent: (parentId: string) => StudentAccount[];
-  updateUserRole: (userId: string, role: UserRole) => void;
-  updateUserStatus: (userId: string, status: 'active' | 'suspended') => void;
-  deleteUser: (userId: string) => void;
-  updateUserProfile: (userId: string, updates: Partial<AuthUser>) => void;
-  updateStudent: (parentId: string, studentId: string, updates: Partial<StudentAccount>) => void;
-  deleteStudent: (parentId: string, studentId: string) => void;
+  updateUserRole: (userId: string, role: UserRole) => Promise<void>;
+  updateUserStatus: (userId: string, status: 'active' | 'suspended') => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
+  updateUserProfile: (userId: string, updates: Partial<AuthUser>) => Promise<void>;
+  updateStudent: (parentId: string, studentId: string, updates: Partial<StudentAccount>) => Promise<void>;
+  deleteStudent: (parentId: string, studentId: string) => Promise<void>;
+  refreshCurrentUser: () => Promise<void>;
+  fetchAllUsers: () => Promise<void>;
 }
 
 export interface IndividualRegisterData {
@@ -109,279 +112,280 @@ export interface StudentRegisterData {
   password: string;
 }
 
-const STORAGE_KEY = 'act_users';
-const SESSION_KEY = 'act_current_user_id';
-
-// Seed super admin account
-const SEED_SUPER_ADMIN: AuthUser = {
-  id: 'super_admin_1',
-  email: import.meta.env.VITE_ADMIN_EMAIL || 'admin@arizonachristiantuition.com',
-  password: import.meta.env.VITE_ADMIN_PASSWORD || '',
-  accountType: 'individual_donor',
-  role: 'super_admin',
-  firstName: 'ACT',
-  lastName: 'Administrator',
-  avatar: 'https://i.pravatar.cc/150?u=superadmin',
-  createdAt: '2025-01-01T00:00:00.000Z',
-  status: 'active',
-};
-
-function loadUsers(): AuthUser[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const users: AuthUser[] = raw ? JSON.parse(raw) : [];
-    // Always ensure seed super admin exists
-    if (!users.find(u => u.id === SEED_SUPER_ADMIN.id)) {
-      return [SEED_SUPER_ADMIN, ...users];
-    }
-    return users;
-  } catch {
-    return [SEED_SUPER_ADMIN];
-  }
-}
-
-function saveUsers(users: AuthUser[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-}
-
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [allUsers, setAllUsers] = useState<AuthUser[]>(() => loadUsers());
-  const [currentUserId, setCurrentUserId] = useState<string | null>(
-    () => sessionStorage.getItem(SESSION_KEY)
-  );
+// Helper: fetch a profile + its students from Supabase
+async function fetchProfileWithStudents(userId: string): Promise<AuthUser | null> {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  if (error || !profile) return null;
 
-  const currentUser = currentUserId ? allUsers.find(u => u.id === currentUserId) ?? null : null;
+  let students: StudentAccount[] | undefined;
+  if ((profile as DbProfile).account_type === 'parent') {
+    const { data: stuRows } = await supabase
+      .from('students')
+      .select('*')
+      .eq('parent_id', userId);
+    if (stuRows) {
+      students = (stuRows as DbStudent[]).map(dbStudentToStudentAccount);
+    }
+  }
+
+  return dbProfileToAuthUser(profile as DbProfile, students);
+}
+
+// Helper: fire-and-forget email call
+function sendEmail(endpoint: string, body: Record<string, unknown>) {
+  const baseUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_URL || '';
+  if (!baseUrl) return;
+  fetch(`${baseUrl}/email/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [allUsers, setAllUsers] = useState<AuthUser[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const isSuperAdmin = currentUser?.role === 'super_admin';
   const isAdmin = currentUser?.role === 'super_admin' || currentUser?.role === 'admin';
 
-  useEffect(() => {
-    saveUsers(allUsers);
-  }, [allUsers]);
+  // ── Refresh current user from DB ─────────────────────────────────────────
+  const refreshCurrentUser = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      setCurrentUser(null);
+      return;
+    }
+    const user = await fetchProfileWithStudents(session.user.id);
+    setCurrentUser(user);
+  }, []);
 
-  useEffect(() => {
-    if (currentUserId) sessionStorage.setItem(SESSION_KEY, currentUserId);
-    else sessionStorage.removeItem(SESSION_KEY);
-  }, [currentUserId]);
+  // ── Fetch all users (admin use) ──────────────────────────────────────────
+  const fetchAllUsers = useCallback(async () => {
+    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    if (data) {
+      setAllUsers((data as DbProfile[]).map(p => dbProfileToAuthUser(p)));
+    }
+  }, []);
 
-  const login = (email: string, password: string) => {
-    const user = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-    if (!user) return { success: false, message: 'Invalid email or password.' };
-    setCurrentUserId(user.id);
+  // ── Session bootstrap + auth state listener ──────────────────────────────
+  useEffect(() => {
+    let mounted = true;
+
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && mounted) {
+        const user = await fetchProfileWithStudents(session.user.id);
+        if (mounted) setCurrentUser(user);
+      }
+      if (mounted) setLoading(false);
+    }
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const user = await fetchProfileWithStudents(session.user.id);
+        if (mounted) setCurrentUser(user);
+      } else {
+        if (mounted) setCurrentUser(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // ── Login ────────────────────────────────────────────────────────────────
+  const login = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, message: error.message };
     return { success: true, message: 'Welcome back!' };
   };
 
-  const logout = () => setCurrentUserId(null);
+  // ── Logout ───────────────────────────────────────────────────────────────
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+  };
 
-  const emailExists = (email: string) =>
-    allUsers.some(u => u.email.toLowerCase() === email.toLowerCase());
+  // ── Register helpers ─────────────────────────────────────────────────────
+  async function signUpAndCreateProfile(
+    email: string,
+    password: string,
+    profileData: Parameters<typeof authUserToProfileInsert>[0]
+  ): Promise<{ success: boolean; message: string }> {
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({ email, password });
+    if (signUpError) return { success: false, message: signUpError.message };
+    if (!authData.user) return { success: false, message: 'Registration failed. Please try again.' };
 
-  const registerIndividual = (data: IndividualRegisterData) => {
-    if (emailExists(data.email)) return { success: false, message: 'An account with this email already exists.' };
-    const user: AuthUser = {
-      id: `ind_${Date.now()}`,
+    const row = authUserToProfileInsert({ ...profileData, id: authData.user.id, email });
+    const { error: profileError } = await supabase.from('profiles').insert(row);
+    if (profileError) return { success: false, message: profileError.message };
+
+    // Fire welcome email (non-blocking)
+    sendEmail('welcome', { firstName: profileData.firstName, lastName: profileData.lastName, email });
+
+    return { success: true, message: 'Account created!' };
+  }
+
+  const registerIndividual = async (data: IndividualRegisterData) => {
+    return signUpAndCreateProfile(data.email, data.password, {
+      id: '', // placeholder, replaced in helper
+      email: data.email,
       accountType: 'individual_donor',
-      role: 'user',
-      status: 'active',
       firstName: data.firstName,
       lastName: data.lastName,
       nickname: data.nickname,
-      email: data.email,
       phone: data.phone,
-      password: data.password,
       avatar: `https://i.pravatar.cc/150?u=${data.email}`,
-      createdAt: new Date().toISOString(),
-    };
-    setAllUsers(prev => [...prev, user]);
-    setCurrentUserId(user.id);
-    return { success: true, message: 'Account created!' };
+    });
   };
 
-  const registerBusiness = (data: BusinessRegisterData) => {
-    if (emailExists(data.email)) return { success: false, message: 'An account with this email already exists.' };
-    const user: AuthUser = {
-      id: `biz_${Date.now()}`,
+  const registerBusiness = async (data: BusinessRegisterData) => {
+    return signUpAndCreateProfile(data.email, data.password, {
+      id: '',
+      email: data.email,
       accountType: 'business_donor',
-      role: 'user',
-      status: 'active',
       firstName: data.firstName,
       lastName: data.lastName,
       businessName: data.businessName,
       businessTitle: data.businessTitle,
       ein: data.ein,
-      email: data.email,
       phone: data.phone,
-      password: data.password,
       avatar: `https://i.pravatar.cc/150?u=${data.email}`,
-      createdAt: new Date().toISOString(),
-    };
-    setAllUsers(prev => [...prev, user]);
-    setCurrentUserId(user.id);
-    return { success: true, message: 'Business account created!' };
+    });
   };
 
-  const registerParent = (data: ParentRegisterData) => {
-    if (emailExists(data.email)) return { success: false, message: 'An account with this email already exists.' };
-    const user: AuthUser = {
-      id: `par_${Date.now()}`,
+  const registerParent = async (data: ParentRegisterData) => {
+    return signUpAndCreateProfile(data.email, data.password, {
+      id: '',
+      email: data.email,
       accountType: 'parent',
-      role: 'user',
-      status: 'active',
       firstName: data.firstName,
       lastName: data.lastName,
       nickname: data.nickname,
-      email: data.email,
       phone: data.phone,
-      password: data.password,
       avatar: `https://i.pravatar.cc/150?u=${data.email}`,
-      students: [],
-      createdAt: new Date().toISOString(),
-    };
-    setAllUsers(prev => [...prev, user]);
-    setCurrentUserId(user.id);
-    return { success: true, message: 'Parent account created!' };
+    });
   };
 
-  const registerStudent = (data: StudentRegisterData) => {
-    if (emailExists(data.email)) return { success: false, message: 'An account with this email already exists.' };
-    const parent = data.parentEmail
-      ? allUsers.find(u => u.email.toLowerCase() === data.parentEmail!.toLowerCase() && u.accountType === 'parent')
-      : null;
-    const user: AuthUser = {
-      id: `stu_${Date.now()}`,
+  const registerStudent = async (data: StudentRegisterData) => {
+    const result = await signUpAndCreateProfile(data.email, data.password, {
+      id: '',
+      email: data.email,
       accountType: 'student',
-      role: 'user',
-      status: 'active',
       firstName: data.firstName,
       lastName: data.lastName,
       nickname: data.nickname,
-      email: data.email,
       gradeLevel: data.gradeLevel,
       dateOfBirth: data.dateOfBirth,
-      parentId: parent?.id,
-      parentApproved: false,
-      password: data.password,
       avatar: `https://i.pravatar.cc/150?u=${data.email}`,
-      createdAt: new Date().toISOString(),
-    };
-    setAllUsers(prev => {
-      const updated = [...prev, user];
-      // Also link to parent's students list
-      if (parent) {
-        return updated.map(u => {
-          if (u.id === parent.id) {
-            const student: StudentAccount = {
-              id: user.id,
-              firstName: data.firstName,
-              lastName: data.lastName,
-              nickname: data.nickname,
-              gradeLevel: data.gradeLevel,
-              dateOfBirth: data.dateOfBirth,
-              parentId: parent.id,
-              parentApproved: false,
-              email: data.email,
-            };
-            return { ...u, students: [...(u.students || []), student] };
-          }
-          return u;
-        });
-      }
-      return updated;
     });
-    setCurrentUserId(user.id);
-    return { success: true, message: 'Student account created!' };
+
+    // If parentEmail provided, trigger parent-approval email
+    if (result.success && data.parentEmail) {
+      sendEmail('parent-approval', {
+        studentFirstName: data.firstName,
+        studentLastName: data.lastName,
+        studentEmail: data.email,
+        parentEmail: data.parentEmail,
+      });
+    }
+
+    return result;
   };
 
-  const addStudentToParent = (
+  // ── Student operations ───────────────────────────────────────────────────
+  const addStudentToParent = async (
     parentId: string,
     studentData: Omit<StudentAccount, 'id' | 'parentId' | 'parentApproved'>
   ) => {
-    const newStudent: StudentAccount = {
-      ...studentData,
-      id: `stu_${Date.now()}`,
-      parentId,
-      parentApproved: true,
-    };
-    setAllUsers(prev =>
-      prev.map(u =>
-        u.id === parentId
-          ? { ...u, students: [...(u.students || []), newStudent] }
-          : u
-      )
-    );
+    const { error } = await supabase.from('students').insert({
+      parent_id: parentId,
+      first_name: studentData.firstName,
+      last_name: studentData.lastName,
+      nickname: studentData.nickname ?? null,
+      grade_level: studentData.gradeLevel || 'Unknown',
+      date_of_birth: studentData.dateOfBirth || null,
+      parent_approved: true,
+      avatar: studentData.avatar ?? null,
+      email: studentData.email ?? null,
+    });
+    if (!error) await refreshCurrentUser();
   };
 
-  const updateStudentPermission = (parentId: string, studentId: string, approved: boolean) => {
-    setAllUsers(prev =>
-      prev.map(u => {
-        if (u.id === parentId) {
-          return {
-            ...u,
-            students: u.students?.map(s =>
-              s.id === studentId ? { ...s, parentApproved: approved } : s
-            ),
-          };
-        }
-        if (u.id === studentId) return { ...u, parentApproved: approved };
-        return u;
-      })
-    );
+  const updateStudentPermission = async (_parentId: string, studentId: string, approved: boolean) => {
+    await supabase.from('students').update({ parent_approved: approved }).eq('id', studentId);
+    await refreshCurrentUser();
   };
 
   const getStudentsForParent = (parentId: string): StudentAccount[] => {
-    const parent = allUsers.find(u => u.id === parentId);
-    return parent?.students || [];
+    if (currentUser?.id === parentId) return currentUser?.students || [];
+    return [];
   };
 
-  const updateUserRole = (userId: string, role: UserRole) => {
+  // ── Admin operations ─────────────────────────────────────────────────────
+  const updateUserRole = async (userId: string, role: UserRole) => {
+    await supabase.from('profiles').update({ role }).eq('id', userId);
     setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
+    if (currentUser?.id === userId) await refreshCurrentUser();
   };
 
-  const updateUserStatus = (userId: string, status: 'active' | 'suspended') => {
+  const updateUserStatus = async (userId: string, status: 'active' | 'suspended') => {
+    await supabase.from('profiles').update({ status }).eq('id', userId);
     setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
+    if (currentUser?.id === userId) await refreshCurrentUser();
   };
 
-  const deleteUser = (userId: string) => {
+  const deleteUser = async (userId: string) => {
+    // Delete profile (cascades to students). Auth user deletion requires service-role.
+    await supabase.from('profiles').delete().eq('id', userId);
     setAllUsers(prev => prev.filter(u => u.id !== userId));
   };
 
-  const updateUserProfile = (userId: string, updates: Partial<AuthUser>) => {
-    setAllUsers(prev =>
-      prev.map(u =>
-        u.id === userId ? { ...u, ...updates } : u
-      )
-    );
+  const updateUserProfile = async (userId: string, updates: Partial<AuthUser>) => {
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.firstName !== undefined) dbUpdates.first_name = updates.firstName;
+    if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
+    if (updates.nickname !== undefined) dbUpdates.nickname = updates.nickname || null;
+    if (updates.email !== undefined) dbUpdates.email = updates.email;
+    if (updates.phone !== undefined) dbUpdates.phone = updates.phone || null;
+    if (updates.bio !== undefined) dbUpdates.bio = updates.bio || null;
+    if (updates.location !== undefined) dbUpdates.location = updates.location || null;
+    if (updates.schoolName !== undefined) dbUpdates.school_name = updates.schoolName || null;
+    if (updates.businessName !== undefined) dbUpdates.business_name = updates.businessName || null;
+    if (updates.businessTitle !== undefined) dbUpdates.business_title = updates.businessTitle || null;
+    if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar || null;
+
+    await supabase.from('profiles').update(dbUpdates).eq('id', userId);
+    if (currentUser?.id === userId) await refreshCurrentUser();
   };
 
-  const updateStudent = (parentId: string, studentId: string, updates: Partial<StudentAccount>) => {
-    setAllUsers(prev =>
-      prev.map(u => {
-        if (u.id === parentId) {
-          return {
-            ...u,
-            students: u.students?.map(s =>
-              s.id === studentId ? { ...s, ...updates } : s
-            ),
-          };
-        }
-        return u;
-      })
-    );
+  const updateStudent = async (_parentId: string, studentId: string, updates: Partial<StudentAccount>) => {
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.firstName !== undefined) dbUpdates.first_name = updates.firstName;
+    if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
+    if (updates.nickname !== undefined) dbUpdates.nickname = updates.nickname || null;
+    if (updates.gradeLevel !== undefined) dbUpdates.grade_level = updates.gradeLevel;
+    if (updates.dateOfBirth !== undefined) dbUpdates.date_of_birth = updates.dateOfBirth || null;
+
+    await supabase.from('students').update(dbUpdates).eq('id', studentId);
+    await refreshCurrentUser();
   };
 
-  const deleteStudent = (parentId: string, studentId: string) => {
-    setAllUsers(prev =>
-      prev.map(u => {
-        if (u.id === parentId) {
-          return {
-            ...u,
-            students: u.students?.filter(s => s.id !== studentId),
-          };
-        }
-        return u;
-      })
-    );
+  const deleteStudent = async (_parentId: string, studentId: string) => {
+    await supabase.from('students').delete().eq('id', studentId);
+    await refreshCurrentUser();
   };
 
   return (
@@ -392,6 +396,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!currentUser,
         isSuperAdmin,
         isAdmin,
+        loading,
         login,
         logout,
         registerIndividual,
@@ -407,6 +412,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateUserProfile,
         updateStudent,
         deleteStudent,
+        refreshCurrentUser,
+        fetchAllUsers,
       }}
     >
       {children}

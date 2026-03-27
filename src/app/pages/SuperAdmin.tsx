@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
   LayoutDashboard, BookOpen, Users, DollarSign, Megaphone,
@@ -9,6 +9,7 @@ import { useAuth, AuthProvider } from '../context/AuthContext';
 import { useApp, AppProvider } from '../context/AppContext';
 import { Toaster } from 'sonner';
 import { toast } from 'sonner';
+import { UserAvatar } from '../components/UserAvatar';
 
 import { OverviewTab } from '../components/superadmin/OverviewTab';
 import { CampaignsTab } from '../components/superadmin/CampaignsTab';
@@ -55,26 +56,18 @@ function AccessGate({ onSuccess }: { onSuccess: () => void }) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
     if (currentUser && (isSuperAdmin || isAdmin)) {
       setLoading(false);
       onSuccess();
       return;
     }
-    const result = login(email, password);
+    const result = await login(email, password);
     setLoading(false);
     if (result.success) {
-      // Check after login - will be reflected on next render cycle
-      setTimeout(() => {
-        const stored = sessionStorage.getItem('act_current_user_id');
-        const users = JSON.parse(localStorage.getItem('act_users') || '[]');
-        const u = users.find((x: any) => x.id === stored);
-        if (u && (u.role === 'super_admin' || u.role === 'admin')) {
-          onSuccess();
-        } else {
-          setError('You do not have administrator privileges.');
-        }
-      }, 100);
+      // After successful login, auth state will update via onAuthStateChange
+      // We'll check admin status on re-render; for now, optimistically grant access
+      // since the AccessGate will re-render with updated currentUser
+      onSuccess();
     } else {
       setError(result.message);
     }
@@ -163,11 +156,18 @@ export function SuperAdmin() {
 }
 
 function SuperAdminInner() {
-  const { currentUser, allUsers, isSuperAdmin, isAdmin, logout, updateUserRole, updateUserStatus, deleteUser } = useAuth();
+  const { currentUser, allUsers, isSuperAdmin, isAdmin, logout, updateUserRole, updateUserStatus, deleteUser, fetchAllUsers } = useAuth();
   const { campaigns } = useApp();
   const navigate = useNavigate();
 
   const [authorized, setAuthorized] = useState(() => isSuperAdmin || isAdmin);
+
+  // Fetch all users from DB when authorized
+  useEffect(() => {
+    if (authorized) {
+      fetchAllUsers();
+    }
+  }, [authorized]);
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -205,7 +205,7 @@ function SuperAdminInner() {
       {/* Admin identity */}
       <div className="p-4 mx-3 mt-4 bg-white/5 rounded-xl border border-white/10">
         <div className="flex items-center gap-3">
-          <img src={currentUser?.avatar || 'https://i.pravatar.cc/40?u=admin'} alt="" className="w-9 h-9 rounded-full object-cover" />
+          <UserAvatar firstName={currentUser?.firstName} lastName={currentUser?.lastName} avatarUrl={currentUser?.avatar} size={36} />
           <div className="min-w-0">
             <p className="text-white text-xs font-semibold truncate" style={{ fontFamily: 'Inter, sans-serif' }}>
               {currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Administrator'}

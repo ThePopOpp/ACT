@@ -66,19 +66,13 @@ export function RegisterParent() {
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    const result = registerParent({
+    const result = await registerParent({
       firstName: form.firstName, lastName: form.lastName, nickname: form.nickname,
       email: form.email, phone: form.phone, password: form.password,
     });
     setLoading(false);
     if (result.success) {
-      // currentUser will be set after registerParent, get id from allUsers
-      // We'll read it from context after state update with a slight delay
-      setTimeout(() => {
-        // Navigate to student step
-        setStep('students');
-      }, 100);
+      setStep('students');
     } else {
       setErrors({ email: result.message });
     }
@@ -97,7 +91,7 @@ export function RegisterParent() {
     const parentId = currentUser?.id;
     if (parentId) {
       for (const s of students.filter(st => st.firstName && st.lastName)) {
-        addStudentToParent(parentId, {
+        await addStudentToParent(parentId, {
           firstName: s.firstName,
           lastName: s.lastName,
           nickname: s.nickname || undefined,
@@ -106,7 +100,6 @@ export function RegisterParent() {
         });
       }
     }
-    await new Promise(r => setTimeout(r, 500));
     setLoading(false);
     setStep('done');
   };

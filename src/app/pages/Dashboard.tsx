@@ -4,6 +4,7 @@ import { TrendingUp, Users, DollarSign, Clock, ExternalLink, Award, Bell, Settin
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { CampaignCard } from '../components/CampaignCard';
+import { UserAvatar } from '../components/UserAvatar';
 
 type DashTab = 'overview' | 'campaigns' | 'donations' | 'notifications';
 
@@ -16,21 +17,21 @@ const NOTIFICATIONS = [
 ];
 
 export function Dashboard() {
-  const { campaigns, pledges, user } = useApp();
+  const { campaigns, pledges } = useApp();
   const { currentUser, isAuthenticated, addStudentToParent } = useAuth();
   const [activeTab, setActiveTab] = useState<DashTab>('overview');
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [newStudent, setNewStudent] = useState({ firstName: '', lastName: '', gradeLevel: '', dateOfBirth: '' });
 
   const displayUser = currentUser
-    ? { name: `${currentUser.firstName} ${currentUser.lastName}`, avatar: currentUser.avatar || `https://i.pravatar.cc/150?u=${currentUser.email}`, email: currentUser.email }
-    : { name: user.name, avatar: user.avatar, email: user.email };
+    ? { name: `${currentUser.firstName} ${currentUser.lastName}`, email: currentUser.email }
+    : { name: 'Guest', email: '' };
 
   const GRADE_LEVELS = ['Pre-K','Kindergarten','1st Grade','2nd Grade','3rd Grade','4th Grade','5th Grade','6th Grade','7th Grade','8th Grade','9th Grade','10th Grade','11th Grade','12th Grade','Trade/Vocational','College'];
 
-  const handleAddStudent = () => {
+  const handleAddStudent = async () => {
     if (!currentUser || !newStudent.firstName || !newStudent.lastName) return;
-    addStudentToParent(currentUser.id, {
+    await addStudentToParent(currentUser.id, {
       firstName: newStudent.firstName, lastName: newStudent.lastName,
       gradeLevel: newStudent.gradeLevel || 'Unknown', dateOfBirth: newStudent.dateOfBirth,
     });
@@ -59,7 +60,13 @@ export function Dashboard() {
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-            <img src={displayUser.avatar} alt={displayUser.name} className="w-20 h-20 rounded-full object-cover border-4 border-[#e8eef5]" />
+            <UserAvatar
+              firstName={currentUser?.firstName}
+              lastName={currentUser?.lastName}
+              avatarUrl={currentUser?.avatar}
+              size={80}
+              className="border-4 border-[#e8eef5]"
+            />
             <div className="flex-1">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-[#1a2d5a]" style={{ fontFamily: 'Merriweather, Georgia, serif', fontWeight: 700, fontSize: '1.5rem' }}>

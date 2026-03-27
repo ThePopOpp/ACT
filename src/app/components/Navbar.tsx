@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { Search, Bell, ChevronDown, Menu, X, LogOut, User, LayoutDashboard, Settings, Shield, Phone, Mail as MailIcon, HelpCircle, Newspaper, Users as UsersIcon, BookOpen, FileText, HeartHandshake } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { UserAvatar } from './UserAvatar';
 
 const ACT_LOGO_COLOR = 'https://arizonachristiantuition.com/wp-content/uploads/2025/12/ACT-Logo-Color.svg';
 
@@ -391,10 +392,11 @@ export function Navbar() {
                     onClick={() => setUserMenuOpen(v => !v)}
                     className="flex items-center gap-2 pl-2 pr-3 py-1.5 hover:bg-[#edf2f8] rounded-full transition-colors"
                   >
-                    <img
-                      src={currentUser?.avatar || `https://i.pravatar.cc/40?u=${currentUser?.email}`}
-                      alt={displayName}
-                      className="w-7 h-7 rounded-full object-cover"
+                    <UserAvatar
+                      firstName={currentUser?.firstName}
+                      lastName={currentUser?.lastName}
+                      avatarUrl={currentUser?.avatar}
+                      size={28}
                     />
                     <span className="hidden sm:block text-sm font-medium text-[#1a2d5a]">{displayName}</span>
                     <ChevronDown size={14} className="hidden sm:block text-gray-400" />

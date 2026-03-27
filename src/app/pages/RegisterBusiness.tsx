@@ -44,8 +44,7 @@ export function RegisterBusiness() {
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    const result = registerBusiness({
+    const result = await registerBusiness({
       firstName: form.firstName, lastName: form.lastName,
       businessName: form.businessName, businessTitle: form.businessTitle, ein: form.ein,
       email: form.email, phone: form.phone, password: form.password,

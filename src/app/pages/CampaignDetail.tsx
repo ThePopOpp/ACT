@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useParams, Link, Navigate } from 'react-router';
 import {
   Clock, Users, Heart, Share2, ChevronRight, Check,
-  MapPin, ExternalLink, MessageCircle, AlertCircle, X, BookOpen,
+  MapPin, ExternalLink, MessageCircle, X, BookOpen,
   Zap, Receipt,
 } from 'lucide-react';
+import { PayPalButtons } from '@paypal/react-paypal-js';
 import { useApp } from '../context/AppContext';
 import { PledgeTier } from '../data/mockData';
 import { toast } from 'sonner';
@@ -30,9 +31,8 @@ function DonateModal({
   const [selected, setSelected] = useState<PledgeTier | null>(tiers[0]);
   const [step, setStep] = useState<'choose' | 'select' | 'payment' | 'success'>('choose');
   const [showTaxModal, setShowTaxModal] = useState(false);
-  const [cardNum, setCardNum] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
+  const [paypalError, setPaypalError] = useState('');
+  const [transactionId, setTransactionId] = useState('');
 
   // ── Custom amount ──────────────────────────────────────────────────────────
   const [useCustom, setUseCustom] = useState(false);
@@ -57,10 +57,9 @@ function DonateModal({
   const effectiveTitle  = useCustom ? 'Custom Donation' : (selected?.title || '');
   const effectiveDesc   = useCustom ? `A one-time donation of ${formatCurrency(customAmountNum)}` : (selected?.description || '');
 
-  const handleDonate = () => {
-    let donationTier: PledgeTier;
+  function getDonationTier(): PledgeTier {
     if (useCustom) {
-      donationTier = {
+      return {
         id: 'custom',
         title: 'Custom Donation',
         amount: customAmountNum,
@@ -69,16 +68,45 @@ function DonateModal({
         claimed: 0,
         eta: 'Immediate',
       };
-    } else {
-      if (!selected) return;
-      donationTier = selected;
     }
-    makePledge(campaignId, donationTier);
-    setStep('success');
-    setTimeout(() => {
-      onClose();
-      toast.success(`🙏 Thank you! Your ${formatCurrency(donationTier.amount)} donation is confirmed!`);
-    }, 2200);
+    return selected!;
+  }
+
+  const createPayPalOrder = (_data: Record<string, unknown>, actions: any) => {
+    setPaypalError('');
+    return actions.order.create({
+      purchase_units: [{
+        amount: { value: effectiveAmount.toFixed(2), currency_code: 'USD' },
+        description: `Donation: ${effectiveTitle}`,
+      }],
+      application_context: { shipping_preference: 'NO_SHIPPING' },
+    });
+  };
+
+  const onPayPalApprove = async (_data: Record<string, unknown>, actions: any) => {
+    try {
+      const details = await actions.order.capture();
+      const txnId = details.purchase_units?.[0]?.payments?.captures?.[0]?.id || details.id;
+      const payerEmail = details.payer?.email_address || '';
+      setTransactionId(txnId);
+      await makePledge(campaignId, getDonationTier(), {
+        paypalTransactionId: txnId,
+        paypalOrderId: details.id,
+        paymentMethod: 'paypal',
+        payerEmail,
+      });
+      setStep('success');
+      setTimeout(() => {
+        onClose();
+        toast.success(`🙏 Thank you! Your ${formatCurrency(effectiveAmount)} donation is confirmed!`);
+      }, 2200);
+    } catch {
+      setPaypalError('Payment capture failed. Please try again.');
+    }
+  };
+
+  const onPayPalError = () => {
+    setPaypalError('Something went wrong with PayPal. Please try again.');
   };
 
   // If tax modal is open, render it instead
@@ -87,7 +115,21 @@ function DonateModal({
       <TaxDeductibleModal
         campaignTitle={campaignTitle}
         onClose={onClose}
-        onSuccess={(amount) => {
+        onSuccess={(amount, payment) => {
+          makePledge(campaignId, {
+            id: 'tax_deductible',
+            title: 'Tax-Deductible Donation',
+            amount,
+            description: 'Arizona Private School Tax Credit donation',
+            perks: ['Tax credit receipt'],
+            claimed: 0,
+            eta: 'Immediate',
+          }, {
+            paypalTransactionId: payment?.txnId,
+            paypalOrderId: payment?.orderId,
+            paymentMethod: 'paypal',
+            payerEmail: payment?.payerEmail,
+          });
           toast.success(`🙏 Thank you! Your tax-deductible donation of ${formatCurrency(amount)} is confirmed!`);
         }}
       />
@@ -332,48 +374,20 @@ function DonateModal({
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>Card Number</label>
-              <input
-                type="text" placeholder="4242 4242 4242 4242" maxLength={19}
-                value={cardNum}
-                onChange={e => setCardNum(e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim())}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2d5a]/20 focus:border-[#1a2d5a]/40"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>Expiry</label>
-                <input
-                  type="text" placeholder="MM / YY" maxLength={7}
-                  value={expiry} onChange={e => setExpiry(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2d5a]/20 focus:border-[#1a2d5a]/40"
-                />
+            {paypalError && (
+              <div className="p-3 bg-red-50 rounded-xl border border-red-200 text-xs text-red-700" style={{ fontFamily: 'Inter, sans-serif' }}>
+                {paypalError}
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>CVV</label>
-                <input
-                  type="text" placeholder="123" maxLength={4}
-                  value={cvv} onChange={e => setCvv(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2d5a]/20 focus:border-[#1a2d5a]/40"
-                />
-              </div>
-            </div>
+            )}
 
-            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100">
-              <AlertCircle size={14} className="text-amber-600 mt-0.5 shrink-0" />
-              <p className="text-xs text-amber-700" style={{ fontFamily: 'Inter, sans-serif' }}>
-                Demo only. No real payment is processed. In production, donations would be processed securely through ACT's certified payment system.
-              </p>
-            </div>
+            <PayPalButtons
+              style={{ layout: 'vertical', label: 'donate', shape: 'rect', color: 'blue' }}
+              createOrder={createPayPalOrder}
+              onApprove={onPayPalApprove}
+              onError={onPayPalError}
+              onCancel={() => setPaypalError('')}
+            />
 
-            <button
-              onClick={handleDonate}
-              className="w-full py-3.5 bg-[#1a2d5a] hover:bg-[#142248] text-white rounded-xl transition-colors"
-              style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700 }}
-            >
-              Confirm Donation — {formatCurrency(effectiveAmount)}
-            </button>
             <button
               onClick={() => setStep('select')}
               className="w-full text-center text-sm text-gray-500 hover:text-gray-700 py-1"
@@ -400,6 +414,11 @@ function DonateModal({
               <strong className="text-[#c8202d]">{formatCurrency(effectiveAmount)}</strong>{' '}
               has been confirmed. Your Arizona tax credit receipt will arrive within 30 days.
             </p>
+            {transactionId && (
+              <p className="text-xs text-gray-400 mt-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                Transaction ID: <span className="font-mono text-gray-500">{transactionId}</span>
+              </p>
+            )}
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { X, Check, AlertCircle, BookOpen, ChevronRight, Info } from 'lucide-react';
+import { X, Check, BookOpen, ChevronRight, Info } from 'lucide-react';
+import { PayPalButtons } from '@paypal/react-paypal-js';
 
 // ── Arizona Tax Credit limits (A.R.S. § 43-1089) ──────────────────────────────
 const TAX_LIMITS = {
@@ -17,7 +18,7 @@ function fmt(n: number) {
 }
 
 // ── Stepper ───────────────────────────────────────────────────────────────────
-const STEPS = ['Donors', 'Taxes', 'Payments', 'Review'] as const;
+const STEPS = ['Donors', 'Taxes', 'Billing', 'Review & Pay'] as const;
 
 function Stepper({ current }: { current: number }) {
   return (
@@ -175,7 +176,7 @@ const LEGAL_NOTICE =
 interface Props {
   campaignTitle: string;
   onClose: () => void;
-  onSuccess: (amount: number) => void;
+  onSuccess: (amount: number, payment?: { txnId?: string; orderId?: string; payerEmail?: string }) => void;
 }
 
 export function TaxDeductibleModal({ campaignTitle, onClose, onSuccess }: Props) {
@@ -203,19 +204,18 @@ export function TaxDeductibleModal({ campaignTitle, onClose, onSuccess }: Props)
   const [donationInput,    setDonationInput]    = useState('');
   const [taxAcknowledged,  setTaxAcknowledged]  = useState(false);
 
-  // ── Step 3: Payments ──────────────────────────────────────────────────────
+  // ── Step 3: Billing ──────────────────────────────────────────────────────
   const [sameAddress, setSameAddress] = useState(true);
   const [billAddress, setBillAddress] = useState('');
   const [billCity,    setBillCity]    = useState('');
   const [billState,   setBillState]   = useState('AZ');
   const [billZip,     setBillZip]     = useState('');
-  const [cardNum,     setCardNum]     = useState('');
-  const [expiry,      setExpiry]      = useState('');
-  const [cvv,         setCvv]         = useState('');
 
-  // ── Step 4: Review ────────────────────────────────────────────────────────
+  // ── Step 4: Review & Pay ──────────────────────────────────────────────────
   const [confirmed,   setConfirmed]   = useState(false);
   const [gdprConsent, setGdprConsent] = useState(false);
+  const [paypalError, setPaypalError] = useState('');
+  const [transactionId, setTransactionId] = useState('');
 
   // ── Computed tax credit values ────────────────────────────────────────────
   const maxCredit        = TAX_LIMITS[taxYear][filingStatus];
@@ -233,10 +233,33 @@ export function TaxDeductibleModal({ campaignTitle, onClose, onSuccess }: Props)
   const step1Valid = firstName.trim() && lastName.trim() && address.trim() && city.trim() && zip.trim() && email.trim();
   const step2Valid = donationTotal > 0 && taxAcknowledged;
 
-  function handleComplete() {
-    onSuccess(donationTotal);
-    setStep(4);
-  }
+  const createPayPalOrder = (_data: Record<string, unknown>, actions: any) => {
+    setPaypalError('');
+    return actions.order.create({
+      purchase_units: [{
+        amount: { value: donationTotal.toFixed(2), currency_code: 'USD' },
+        description: `Tax Deductible Donation — ${campaignTitle}`,
+      }],
+      application_context: { shipping_preference: 'NO_SHIPPING' },
+    });
+  };
+
+  const onPayPalApprove = async (_data: Record<string, unknown>, actions: any) => {
+    try {
+      const details = await actions.order.capture();
+      const txnId = details.purchase_units?.[0]?.payments?.captures?.[0]?.id || details.id;
+      const payerEmail = details.payer?.email_address || '';
+      setTransactionId(txnId);
+      onSuccess(donationTotal, { txnId, orderId: details.id, payerEmail });
+      setStep(4);
+    } catch {
+      setPaypalError('Payment capture failed. Please try again.');
+    }
+  };
+
+  const onPayPalError = () => {
+    setPaypalError('Something went wrong with PayPal. Please try again.');
+  };
 
   // ── SUCCESS SCREEN ────────────────────────────────────────────────────────
   if (step === 4) {
@@ -274,6 +297,11 @@ export function TaxDeductibleModal({ campaignTitle, onClose, onSuccess }: Props)
             </div>
           </div>
 
+          {transactionId && (
+            <p className="text-xs text-gray-400 mb-3" style={FONT_SANS}>
+              Transaction ID: <span className="font-mono text-gray-500">{transactionId}</span>
+            </p>
+          )}
           <p className="text-gray-400 text-xs" style={FONT_SANS}>
             Your AZ tax credit receipt will arrive within 30 days.
           </p>
@@ -517,10 +545,10 @@ export function TaxDeductibleModal({ campaignTitle, onClose, onSuccess }: Props)
             </>
           )}
 
-          {/* ══ STEP 3 — PAYMENT ═════════════════════════════════════════════ */}
+          {/* ══ STEP 3 — BILLING ═════════════════════════════════════════════ */}
           {step === 2 && (
             <>
-              <StepBanner step={3} title="Payment Information" />
+              <StepBanner step={3} title="Billing Address" />
               <div className="p-6 space-y-6">
 
                 <div>
@@ -548,36 +576,6 @@ export function TaxDeductibleModal({ campaignTitle, onClose, onSuccess }: Props)
                   )}
                 </div>
 
-                <div>
-                  <SectionHeading title="Card Information" subtitle="Enter your payment information below." />
-                  <div className="space-y-3">
-                    <Field label="Card Number" required>
-                      <input
-                        className={inputCls}
-                        placeholder="4242 4242 4242 4242"
-                        value={cardNum}
-                        maxLength={19}
-                        onChange={e => setCardNum(e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim())}
-                      />
-                    </Field>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Expiration Date" required>
-                        <input className={inputCls} placeholder="MM / YY" value={expiry} maxLength={7} onChange={e => setExpiry(e.target.value)} />
-                      </Field>
-                      <Field label="CVV" required>
-                        <input className={inputCls} placeholder="123" value={cvv} maxLength={4} onChange={e => setCvv(e.target.value)} />
-                      </Field>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                    <AlertCircle size={14} className="text-amber-600 mt-0.5 shrink-0" />
-                    <p className="text-xs text-amber-700" style={FONT_SANS}>
-                      Demo only — no real payment is processed. In production, payments are handled securely through ACT's certified payment processor.
-                    </p>
-                  </div>
-                </div>
-
                 {/* Summary */}
                 <div className="p-4 bg-[#edf2f8] rounded-xl border border-[#1a2d5a]/10 space-y-2">
                   <p className="text-xs font-semibold text-[#1a2d5a] mb-1" style={FONT_SANS}>Donation Summary</p>
@@ -600,10 +598,10 @@ export function TaxDeductibleModal({ campaignTitle, onClose, onSuccess }: Props)
             </>
           )}
 
-          {/* ══ STEP 4 — REVIEW ══════════════════════════════════════════════ */}
+          {/* ══ STEP 4 — REVIEW & PAY ═══════════════════════════════════════ */}
           {step === 3 && (
             <>
-              <StepBanner step={4} title="Review" />
+              <StepBanner step={4} title="Review & Pay" />
               <div className="p-6 space-y-6">
                 <SectionHeading title="Review Your Donation" />
 
@@ -710,6 +708,28 @@ export function TaxDeductibleModal({ campaignTitle, onClose, onSuccess }: Props)
                     </label>
                   </div>
                 </div>
+
+                {/* PayPal Buttons — only shown after both consents checked */}
+                {confirmed && gdprConsent && (
+                  <div className="space-y-3">
+                    <div className="h-px bg-gray-100" />
+                    <p className="text-xs font-semibold text-[#1a2d5a] text-center" style={FONT_SANS}>
+                      Complete your {fmt(donationTotal)} donation via PayPal
+                    </p>
+                    {paypalError && (
+                      <div className="p-3 bg-red-50 rounded-xl border border-red-200 text-xs text-red-700" style={FONT_SANS}>
+                        {paypalError}
+                      </div>
+                    )}
+                    <PayPalButtons
+                      style={{ layout: 'vertical', label: 'donate', shape: 'rect', color: 'blue' }}
+                      createOrder={createPayPalOrder}
+                      onApprove={onPayPalApprove}
+                      onError={onPayPalError}
+                      onCancel={() => setPaypalError('')}
+                    />
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -749,8 +769,7 @@ export function TaxDeductibleModal({ campaignTitle, onClose, onSuccess }: Props)
               <button onClick={() => setStep(1)} className="px-6 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-600 rounded-xl text-sm" style={FONT_SANS}>Previous</button>
               <button
                 onClick={() => setStep(3)}
-                disabled={!cardNum || !expiry || !cvv}
-                className="flex items-center gap-2 px-8 py-2.5 bg-[#1a2d5a] hover:bg-[#142248] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm transition-colors"
+                className="flex items-center gap-2 px-8 py-2.5 bg-[#1a2d5a] hover:bg-[#142248] text-white rounded-xl text-sm transition-colors"
                 style={{ ...FONT_SANS, fontWeight: 700 }}
               >
                 Next <ChevronRight size={16} />
@@ -759,16 +778,8 @@ export function TaxDeductibleModal({ campaignTitle, onClose, onSuccess }: Props)
           )}
 
           {step === 3 && (
-            <div className="flex justify-between">
+            <div className="flex justify-start">
               <button onClick={() => setStep(2)} className="px-6 py-2.5 border border-gray-300 hover:bg-gray-50 text-gray-600 rounded-xl text-sm" style={FONT_SANS}>Previous</button>
-              <button
-                onClick={handleComplete}
-                disabled={!confirmed || !gdprConsent}
-                className="flex items-center gap-2 px-8 py-2.5 bg-[#1a2d5a] hover:bg-[#142248] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm transition-colors"
-                style={{ ...FONT_SANS, fontWeight: 700 }}
-              >
-                Complete Donation — {fmt(donationTotal)}
-              </button>
             </div>
           )}
         </div>

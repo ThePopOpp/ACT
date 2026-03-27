@@ -1,6 +1,7 @@
 import { useParams, Navigate } from 'react-router';
 import { MapPin, Mail, Phone, GraduationCap, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { UserAvatar } from '../components/UserAvatar';
 
 export function PublicProfile() {
   const { userId } = useParams();
@@ -30,10 +31,12 @@ export function PublicProfile() {
           <div className="p-8">
             {/* Profile Header */}
             <div className="flex flex-col sm:flex-row gap-6 mb-8">
-              <img
-                src={user.avatar}
-                alt={user.firstName}
-                className="w-32 h-32 rounded-full object-cover border-4 border-[#e8eef5] shrink-0"
+              <UserAvatar
+                firstName={user.firstName}
+                lastName={user.lastName}
+                avatarUrl={user.avatar}
+                size={128}
+                className="border-4 border-[#e8eef5]"
               />
               <div className="flex-1">
                 <div className="flex items-start justify-between mb-4">

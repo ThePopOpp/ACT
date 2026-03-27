@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Plus, Trash2, Edit2, Check, X, Upload, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { UserAvatar } from '../components/UserAvatar';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 
 interface EditForm {
@@ -29,6 +31,8 @@ interface ChildFormData {
 export function ProfileManagement() {
   const { currentUser, updateUserProfile, updateStudent, deleteStudent, addStudentToParent } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAddChild, setShowAddChild] = useState(false);
   const [expandedChildId, setExpandedChildId] = useState<string | null>(null);
   const [editingChildId, setEditingChildId] = useState<string | null>(null);
@@ -75,7 +79,30 @@ export function ProfileManagement() {
     '11th Grade', '12th Grade', 'Trade/Vocational', 'College'
   ];
 
-  const handleProfileSave = () => {
+  const handlePhotoUpload = async (file: File) => {
+    if (!currentUser) return;
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${currentUser.id}/avatar.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      // Bust cache by appending timestamp
+      const avatarUrl = `${data.publicUrl}?t=${Date.now()}`;
+      await updateUserProfile(currentUser.id, { avatar: avatarUrl });
+      toast.success('Photo updated!');
+    } catch (err) {
+      toast.error('Failed to upload photo. Please try again.');
+      console.error(err);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleProfileSave = async () => {
     if (!currentUser) return;
 
     if (!formData.firstName || !formData.lastName || !formData.email) {
@@ -83,7 +110,7 @@ export function ProfileManagement() {
       return;
     }
 
-    updateUserProfile(currentUser.id, {
+    await updateUserProfile(currentUser.id, {
       firstName: formData.firstName,
       lastName: formData.lastName,
       nickname: formData.nickname || undefined,
@@ -100,7 +127,7 @@ export function ProfileManagement() {
     setIsEditing(false);
   };
 
-  const handleAddChild = () => {
+  const handleAddChild = async () => {
     if (!currentUser || currentUser.accountType !== 'parent') return;
 
     if (!childForm.firstName || !childForm.lastName || !childForm.gradeLevel) {
@@ -108,7 +135,7 @@ export function ProfileManagement() {
       return;
     }
 
-    addStudentToParent(currentUser.id, {
+    await addStudentToParent(currentUser.id, {
       firstName: childForm.firstName,
       lastName: childForm.lastName,
       gradeLevel: childForm.gradeLevel,
@@ -129,7 +156,7 @@ export function ProfileManagement() {
     setShowAddChild(false);
   };
 
-  const handleUpdateChild = (childId: string) => {
+  const handleUpdateChild = async (childId: string) => {
     if (!currentUser || !editingChild) return;
 
     if (!editingChild.firstName || !editingChild.lastName || !editingChild.gradeLevel) {
@@ -137,7 +164,7 @@ export function ProfileManagement() {
       return;
     }
 
-    updateStudent(currentUser.id, childId, {
+    await updateStudent(currentUser.id, childId, {
       firstName: editingChild.firstName,
       lastName: editingChild.lastName,
       gradeLevel: editingChild.gradeLevel,
@@ -149,11 +176,11 @@ export function ProfileManagement() {
     setEditingChild(null);
   };
 
-  const handleDeleteChild = (childId: string) => {
+  const handleDeleteChild = async (childId: string) => {
     if (!currentUser) return;
     if (!confirm('Are you sure you want to remove this child from your profile?')) return;
 
-    deleteStudent(currentUser.id, childId);
+    await deleteStudent(currentUser.id, childId);
     toast.success('Child removed successfully!');
   };
 
@@ -194,16 +221,33 @@ export function ProfileManagement() {
               <form className="p-6 space-y-4">
                 {/* Avatar Section */}
                 <div className="flex flex-col items-center gap-4 pb-6 border-b border-gray-100">
-                  <img
-                    src={currentUser.avatar}
-                    alt={currentUser.firstName}
-                    className="w-24 h-24 rounded-full object-cover border-4 border-[#e8eef5]"
+                  <UserAvatar
+                    firstName={currentUser.firstName}
+                    lastName={currentUser.lastName}
+                    avatarUrl={currentUser.avatar}
+                    size={96}
+                    className="border-4 border-[#e8eef5]"
                   />
-                  <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer text-sm font-medium"
-                    style={{ fontFamily: 'Inter, sans-serif' }}>
-                    <Upload size={16} /> Change Photo
-                    <input type="file" accept="image/*" className="hidden" />
-                  </label>
+                  <button
+                    type="button"
+                    disabled={uploadingPhoto}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer text-sm font-medium disabled:opacity-50"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                  >
+                    <Upload size={16} /> {uploadingPhoto ? 'Uploading…' : 'Change Photo'}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handlePhotoUpload(file);
+                      e.target.value = '';
+                    }}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -366,10 +410,12 @@ export function ProfileManagement() {
             ) : (
               <div className="p-6 space-y-4">
                 <div className="flex items-center gap-4">
-                  <img
-                    src={currentUser.avatar}
-                    alt={currentUser.firstName}
-                    className="w-20 h-20 rounded-full object-cover border-4 border-[#e8eef5]"
+                  <UserAvatar
+                    firstName={currentUser.firstName}
+                    lastName={currentUser.lastName}
+                    avatarUrl={currentUser.avatar}
+                    size={80}
+                    className="border-4 border-[#e8eef5]"
                   />
                   <div>
                     <h3 className="text-[#1a2d5a] text-lg font-semibold" style={{ fontFamily: 'Merriweather, Georgia, serif' }}>

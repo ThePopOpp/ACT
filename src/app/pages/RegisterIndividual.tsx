@@ -41,8 +41,7 @@ export function RegisterIndividual() {
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    const result = registerIndividual({
+    const result = await registerIndividual({
       firstName: form.firstName, lastName: form.lastName, nickname: form.nickname,
       email: form.email, phone: form.phone, password: form.password,
     });
