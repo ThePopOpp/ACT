@@ -180,12 +180,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && mounted) {
-        const user = await fetchProfileWithStudents(session.user.id);
-        if (mounted) setCurrentUser(user);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && mounted) {
+          const user = await fetchProfileWithStudents(session.user.id);
+          if (mounted) setCurrentUser(user);
+        }
+      } catch {
+        // swallow errors so loading never stays stuck
+      } finally {
+        if (mounted) setLoading(false);
       }
-      if (mounted) setLoading(false);
     }
 
     init();
