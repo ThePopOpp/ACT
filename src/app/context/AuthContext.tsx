@@ -179,6 +179,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // Hard timeout: never show spinner for more than 5 seconds
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 5000);
+
     async function init() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -189,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         // swallow errors so loading never stays stuck
       } finally {
+        clearTimeout(timeout);
         if (mounted) setLoading(false);
       }
     }
@@ -206,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
