@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { Campaign, CATEGORIES } from '../data/mockData';
 import { toast } from 'sonner';
 
@@ -93,7 +94,7 @@ function FileDropZone({
 }
 
 export function CreateCampaign() {
-  const { addCampaign, user } = useApp();
+  const { addCampaign } = useApp();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
@@ -109,6 +110,7 @@ export function CreateCampaign() {
   const [duration, setDuration] = useState('30');
   const [customDuration, setCustomDuration] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [story, setStory] = useState('');
   const [tiers, setTiers] = useState<GivingTier[]>([{ ...EMPTY_TIER }]);
 
@@ -157,7 +159,20 @@ export function CreateCampaign() {
   const handlePublish = async () => {
     if (!termsAgreed) { toast.error('Please agree to the Terms of Service.'); return; }
     setLaunching(true);
-    await new Promise(r => setTimeout(r, 2000));
+
+    // Upload campaign image if a file was selected
+    let finalImageUrl = 'https://images.unsplash.com/photo-1769201153045-98827f62996b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080';
+    if (imageFiles.length > 0) {
+      const file = imageFiles[0];
+      const ext = file.name.split('.').pop();
+      const path = `${currentUser?.id || 'anon'}/${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from('campaign-images').upload(path, file);
+      if (!uploadErr) {
+        const { data } = supabase.storage.from('campaign-images').getPublicUrl(path);
+        finalImageUrl = data.publicUrl;
+      }
+    }
+
     const newCampaign: Campaign = {
       id: `new_${Date.now()}`,
       title,
@@ -167,16 +182,16 @@ export function CreateCampaign() {
       goal: Number(goal),
       raised: 0,
       backers: 0,
-      daysLeft: Number(duration),
-      image: imageUrl || 'https://images.unsplash.com/photo-1769201153045-98827f62996b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080',
+      daysLeft: duration === 'custom' ? Number(customDuration) : Number(duration),
+      image: finalImageUrl,
       tags: [category, 'Tax Credit', gradeLevel].filter(Boolean),
       featured: false,
       status: 'active',
       createdAt: new Date().toISOString().split('T')[0],
       creator: {
-        id: currentUser?.id || user.id,
+        id: currentUser?.id || '',
         name: schoolName || `${parentFirstName} ${parentLastName}`,
-        avatar: `https://i.pravatar.cc/150?u=${parentEmail}`,
+        avatar: currentUser?.avatar || '',
         bio: `${schoolName} — ${schoolCity}, ${schoolState}`,
         campaignsCreated: 1,
         location: `${schoolCity}, ${schoolState}`,
@@ -351,16 +366,18 @@ export function CreateCampaign() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>Campaign Image URL</label>
-                <div className="relative">
-                  <Upload size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="url" placeholder="https://your-school-photo.jpg"
-                    value={imageUrl} onChange={e => setImageUrl(e.target.value)}
-                    className={inp + ' pl-9'} />
-                </div>
+                <FileDropZone
+                  label="Campaign Featured Image"
+                  name="campaignImage"
+                  files={imageFiles}
+                  onChange={files => {
+                    setImageFiles(files);
+                    if (files[0]) setImageUrl(URL.createObjectURL(files[0]));
+                  }}
+                />
                 {imageUrl && (
                   <div className="mt-3 rounded-xl overflow-hidden aspect-video border border-gray-200">
-                    <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
+                    <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
                   </div>
                 )}
               </div>
@@ -490,6 +507,51 @@ export function CreateCampaign() {
         ═══════════════════════════════════════════════════════════════ */}
         {step === 2 && (
           <div className="bg-white rounded-2xl border border-gray-200 p-8 space-y-6">
+
+            {/* Select from existing students if parent has any */}
+            {currentUser?.students && currentUser.students.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  Select a student from your profile
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  {currentUser.students.map(s => {
+                    const selected = studentFirstName === s.firstName && studentLastName === s.lastName;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          setStudentFirstName(s.firstName);
+                          setStudentLastName(s.lastName);
+                          setStudentNickname(s.nickname || '');
+                          setGradeLevel(s.gradeLevel);
+                        }}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${selected ? 'border-[#1a2d5a] bg-[#edf2f8]' : 'border-gray-200 hover:border-[#1a2d5a]/40 hover:bg-gray-50'}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-[#1a2d5a] flex items-center justify-center text-white text-sm font-bold shrink-0">
+                            {s.firstName[0]}{s.lastName[0]}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-800 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              {s.firstName} {s.lastName}
+                            </p>
+                            <p className="text-xs text-gray-500">{s.gradeLevel}</p>
+                          </div>
+                          {selected && <Check size={16} className="ml-auto text-[#1a2d5a]" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+                  <div className="relative flex justify-center text-xs"><span className="bg-white px-3 text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>or enter manually</span></div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>Student First Name</label>
@@ -516,7 +578,7 @@ export function CreateCampaign() {
             </div>
 
             <FileDropZone
-              label="Student Profile Photo"
+              label="Student Profile Photo (optional)"
               name="studentPhoto"
               files={studentPhoto}
               onChange={setStudentPhoto}
