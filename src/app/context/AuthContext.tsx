@@ -224,16 +224,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     profileData: Parameters<typeof authUserToProfileInsert>[0]
   ): Promise<{ success: boolean; message: string }> {
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({ email, password });
+    // Pass profile data as user metadata — a DB trigger creates the profile row,
+    // bypassing PostgREST schema cache issues entirely.
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          account_type: profileData.accountType,
+          first_name: profileData.firstName,
+          last_name: profileData.lastName,
+          nickname: profileData.nickname ?? null,
+          phone: profileData.phone ?? null,
+          location: profileData.location ?? null,
+          school_name: profileData.schoolName ?? null,
+          business_name: profileData.businessName ?? null,
+          business_title: profileData.businessTitle ?? null,
+          ein: profileData.ein ?? null,
+          date_of_birth: profileData.dateOfBirth ?? null,
+          grade_level: profileData.gradeLevel ?? null,
+        },
+      },
+    });
     if (signUpError) return { success: false, message: signUpError.message };
     if (!authData.user) return { success: false, message: 'Registration failed. Please try again.' };
 
-    const row = authUserToProfileInsert({ ...profileData, id: authData.user.id, email });
-    const { error: profileError } = await supabase.from('profiles').insert(row);
-    if (profileError) return { success: false, message: profileError.message };
-
     // Fire welcome email (non-blocking)
-    sendEmail('welcome', { firstName: profileData.firstName, lastName: profileData.lastName, email });
+    sendEmail('welcome', { firstName: profileData.firstName, lastName: profileData.lastName, email, accountType: profileData.accountType });
 
     return { success: true, message: 'Account created!' };
   }
