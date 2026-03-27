@@ -72,7 +72,9 @@ export function CampaignsTab({ campaigns, onToggleFeature, onDelete }: Props) {
     setSuspendedIds(prev => { const s = new Set(prev); s.delete(id); return s; });
     toast.success('Campaign reinstated.');
   };
-  const deleteById = (id: string) => {
+  const deleteById = (id: string, title: string) => {
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    setPendingCampaigns(prev => prev.filter(c => c.id !== id));
     setDeletedIds(prev => { const s = new Set(prev); s.add(id); return s; });
     onDelete(id);
     toast('Campaign deleted.');
@@ -133,7 +135,7 @@ export function CampaignsTab({ campaigns, onToggleFeature, onDelete }: Props) {
             className="px-3 py-1.5 text-xs font-semibold text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
             Suspend All
           </button>
-          <button onClick={() => { selectedIds.forEach(id => deleteById(id)); setSelectedIds(new Set()); }}
+          <button onClick={() => { if (!window.confirm(`Delete ${selectedIds.size} campaigns? This cannot be undone.`)) return; selectedIds.forEach(id => { const c = allItems.find(x => x.id === id); deleteById(id, c?.title || id); }); setSelectedIds(new Set()); }}
             className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
             Delete All
           </button>
@@ -228,6 +230,9 @@ export function CampaignsTab({ campaigns, onToggleFeature, onDelete }: Props) {
                             <button onClick={() => rejectById(campaign.id)} className="flex items-center gap-1 px-2.5 py-1.5 bg-red-50 text-red-500 text-xs font-semibold rounded-lg hover:bg-red-100 transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
                               <X size={12} /> Reject
                             </button>
+                            <button onClick={() => deleteById(campaign.id, campaign.title)} className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <Trash2 size={12} /> Delete
+                            </button>
                           </>
                         ) : (
                           <>
@@ -246,8 +251,8 @@ export function CampaignsTab({ campaigns, onToggleFeature, onDelete }: Props) {
                                 Suspend
                               </button>
                             )}
-                            <button onClick={() => deleteById(campaign.id)} className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center text-red-400 hover:bg-red-100 transition-colors">
-                              <Trash2 size={12} />
+                            <button onClick={() => deleteById(campaign.id, campaign.title)} className="flex items-center gap-1 px-2.5 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <Trash2 size={12} /> Delete
                             </button>
                           </>
                         )}
