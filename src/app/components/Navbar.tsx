@@ -419,6 +419,14 @@ export function Navbar() {
                         </div>
                         <div className="py-1.5">
                           <Link
+                            to="/profile"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#e8eef5] hover:text-[#1a2d5a] transition-colors"
+                            style={{ fontFamily: 'Inter, sans-serif' }}
+                          >
+                            <User size={15} className="text-gray-400" /> My Profile
+                          </Link>
+                          <Link
                             to="/dashboard"
                             onClick={() => setUserMenuOpen(false)}
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#e8eef5] hover:text-[#1a2d5a] transition-colors"

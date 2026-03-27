@@ -24,9 +24,10 @@ const PENDING_CAMPAIGNS = [
 interface Props {
   campaigns: Campaign[];
   onToggleFeature: (id: string, featured: boolean) => void;
+  onDelete: (id: string) => void;
 }
 
-export function CampaignsTab({ campaigns, onToggleFeature }: Props) {
+export function CampaignsTab({ campaigns, onToggleFeature, onDelete }: Props) {
   const [filter, setFilter] = useState<CampaignStatus>('all');
   const [search, setSearch] = useState('');
   const [pendingCampaigns, setPendingCampaigns] = useState(PENDING_CAMPAIGNS);
@@ -73,6 +74,7 @@ export function CampaignsTab({ campaigns, onToggleFeature }: Props) {
   };
   const deleteById = (id: string) => {
     setDeletedIds(prev => { const s = new Set(prev); s.add(id); return s; });
+    onDelete(id);
     toast('Campaign deleted.');
   };
 

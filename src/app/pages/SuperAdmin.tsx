@@ -157,7 +157,7 @@ export function SuperAdmin() {
 
 function SuperAdminInner() {
   const { currentUser, allUsers, isSuperAdmin, isAdmin, logout, updateUserRole, updateUserStatus, deleteUser, fetchAllUsers } = useAuth();
-  const { campaigns } = useApp();
+  const { campaigns, deleteCampaign } = useApp();
   const navigate = useNavigate();
 
   const [authorized, setAuthorized] = useState(() => isSuperAdmin || isAdmin);
@@ -342,7 +342,7 @@ function SuperAdminInner() {
             <OverviewTab campaigns={allCampaigns} users={allUsers} />
           )}
           {activeTab === 'campaigns' && (
-            <CampaignsTab campaigns={allCampaigns} onToggleFeature={toggleFeature} />
+            <CampaignsTab campaigns={allCampaigns} onToggleFeature={toggleFeature} onDelete={deleteCampaign} />
           )}
           {activeTab === 'users' && (
             <UsersTab
