@@ -1,14 +1,25 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
-import { Edit2, Save, ChevronLeft, Trash2, AlertCircle } from 'lucide-react';
+import { Save, ChevronLeft, Trash2, AlertCircle, GraduationCap, Plus, Check, UserPlus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { CATEGORIES } from '../data/mockData';
 import { toast } from 'sonner';
+
+const GRADE_LEVELS = [
+  'Pre-K', 'Kindergarten',
+  '1st Grade', '2nd Grade', '3rd Grade', '4th Grade', '5th Grade',
+  '6th Grade', '7th Grade', '8th Grade',
+  '9th Grade', '10th Grade', '11th Grade', '12th Grade',
+  'Trade/Vocational', 'College',
+];
 
 export function EditCampaign() {
   const { campaignId } = useParams();
   const navigate = useNavigate();
   const { campaigns, updateCampaign, deleteCampaign } = useApp();
+  const { currentUser, addStudentToParent, refreshCurrentUser } = useAuth();
 
   const campaign = campaigns.find(c => c.id === campaignId);
 
@@ -22,6 +33,15 @@ export function EditCampaign() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Student state
+  const [selectedStudentId, setSelectedStudentId] = useState(campaign?.studentId || '');
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [newStudentFirst, setNewStudentFirst] = useState('');
+  const [newStudentLast, setNewStudentLast] = useState('');
+  const [newStudentGrade, setNewStudentGrade] = useState('');
+  const [newStudentDob, setNewStudentDob] = useState('');
+  const [savingStudent, setSavingStudent] = useState(false);
 
   if (!campaign) {
     return (
@@ -41,9 +61,7 @@ export function EditCampaign() {
     }
 
     setIsSaving(true);
-    await new Promise(r => setTimeout(r, 1000));
-
-    updateCampaign(campaignId!, {
+    await updateCampaign(campaignId!, {
       title,
       tagline,
       story,
@@ -51,11 +69,36 @@ export function EditCampaign() {
       goal: Number(goal),
       image: imageUrl || campaign.image,
       daysLeft: Number(daysLeft),
+      studentId: selectedStudentId || undefined,
     });
 
     setIsSaving(false);
     toast.success('Campaign updated successfully!');
     navigate(`/campaign/${campaignId}`);
+  };
+
+  const handleAddNewStudent = async () => {
+    if (!newStudentFirst.trim() || !newStudentLast.trim() || !currentUser) return;
+    setSavingStudent(true);
+    const { data: inserted } = await supabase.from('students').insert({
+      parent_id: currentUser.id,
+      first_name: newStudentFirst.trim(),
+      last_name: newStudentLast.trim(),
+      grade_level: newStudentGrade || 'Unknown',
+      date_of_birth: newStudentDob || null,
+      parent_approved: true,
+    }).select('id').single();
+    if (inserted) {
+      await refreshCurrentUser();
+      setSelectedStudentId(inserted.id);
+      setShowAddStudent(false);
+      setNewStudentFirst('');
+      setNewStudentLast('');
+      setNewStudentGrade('');
+      setNewStudentDob('');
+      toast.success('Student added!');
+    }
+    setSavingStudent(false);
   };
 
   const handleDelete = async () => {
@@ -228,6 +271,119 @@ export function EditCampaign() {
               </div>
             </div>
           </div>
+
+          {/* Student Card */}
+          {currentUser?.accountType === 'parent' && (
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-[#1a2d5a] to-[#2a3d6a] px-8 py-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <GraduationCap size={20} className="text-white/80" />
+                  <h2 className="text-white text-lg font-semibold" style={{ fontFamily: 'Merriweather, Georgia, serif' }}>
+                    Student
+                  </h2>
+                </div>
+                {selectedStudentId && (
+                  <span className="px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-full">
+                    Linked
+                  </span>
+                )}
+              </div>
+
+              <div className="p-8 space-y-5">
+                {/* Existing students */}
+                {currentUser.students && currentUser.students.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Select a student from your account
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {currentUser.students.map(s => {
+                        const active = selectedStudentId === s.id;
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => setSelectedStudentId(active ? '' : s.id)}
+                            className={`p-4 rounded-xl border-2 text-left transition-all ${active ? 'border-[#1a2d5a] bg-[#edf2f8]' : 'border-gray-200 hover:border-[#1a2d5a]/40 hover:bg-gray-50'}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-[#1a2d5a] flex items-center justify-center text-white text-sm font-bold shrink-0">
+                                {s.firstName[0]}{s.lastName[0]}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-800 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  {s.firstName} {s.lastName}
+                                </p>
+                                <p className="text-xs text-gray-500">{s.gradeLevel}</p>
+                              </div>
+                              {active && <Check size={16} className="ml-auto text-[#1a2d5a]" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add new student toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowAddStudent(v => !v)}
+                  className="flex items-center gap-2 text-sm text-[#1a2d5a] font-semibold hover:text-[#c8202d] transition-colors"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                >
+                  <UserPlus size={15} />
+                  {showAddStudent ? 'Cancel' : (currentUser.students?.length ? 'Add a different student' : 'Add a student')}
+                </button>
+
+                {showAddStudent && (
+                  <div className="border border-gray-200 rounded-xl p-5 space-y-4 bg-gray-50">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>First Name *</label>
+                        <input value={newStudentFirst} onChange={e => setNewStudentFirst(e.target.value)} placeholder="Jace" className={inp} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>Last Name *</label>
+                        <input value={newStudentLast} onChange={e => setNewStudentLast(e.target.value)} placeholder="Smith" className={inp} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>Grade Level</label>
+                        <select value={newStudentGrade} onChange={e => setNewStudentGrade(e.target.value)} className={inp + ' bg-white'}>
+                          <option value="">Select grade</option>
+                          {GRADE_LEVELS.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>Date of Birth</label>
+                        <input type="date" value={newStudentDob} onChange={e => setNewStudentDob(e.target.value)} max={new Date().toISOString().split('T')[0]} className={inp} />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddNewStudent}
+                      disabled={savingStudent || !newStudentFirst.trim() || !newStudentLast.trim()}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[#1a2d5a] text-white text-sm rounded-xl hover:bg-[#142248] disabled:opacity-50 transition-colors font-semibold"
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
+                      {savingStudent
+                        ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…</>
+                        : <><Plus size={14} /> Save Student</>
+                      }
+                    </button>
+                  </div>
+                )}
+
+                {!currentUser.students?.length && !showAddStudent && (
+                  <p className="text-sm text-gray-400" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    No students linked to your account yet.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Creator Info Card - Read Only */}
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">

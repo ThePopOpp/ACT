@@ -5,8 +5,17 @@ import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { CampaignCard } from '../components/CampaignCard';
 import { UserAvatar } from '../components/UserAvatar';
+import { toast } from 'sonner';
 
 type DashTab = 'overview' | 'campaigns' | 'donations' | 'notifications';
+
+const GRADE_LEVELS = [
+  'Pre-K', 'Kindergarten',
+  '1st Grade', '2nd Grade', '3rd Grade', '4th Grade', '5th Grade',
+  '6th Grade', '7th Grade', '8th Grade',
+  '9th Grade', '10th Grade', '11th Grade', '12th Grade',
+  'Trade/Vocational', 'College',
+];
 
 const NOTIFICATIONS = [
   { id: 1, icon: '🎉', text: 'Covenant Christian School reached 100% of its goal!', time: '2h ago', unread: true },
@@ -37,6 +46,7 @@ export function Dashboard() {
     });
     setNewStudent({ firstName: '', lastName: '', gradeLevel: '', dateOfBirth: '' });
     setShowAddStudent(false);
+    toast.success(`${newStudent.firstName} added to your account!`);
   };
 
   const backedCampaigns = pledges
@@ -195,6 +205,113 @@ export function Dashboard() {
                 ))}
               </div>
             </div>
+
+            {/* My Students — parents only */}
+            {currentUser?.accountType === 'parent' && (
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="bg-gradient-to-r from-[#1a2d5a] to-[#2a3d6a] px-6 py-5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap size={18} className="text-white/80" />
+                    <h2 className="text-white font-semibold" style={{ fontFamily: 'Merriweather, Georgia, serif' }}>My Students</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowAddStudent(v => !v)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-colors"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                  >
+                    <UserPlus size={13} /> {showAddStudent ? 'Cancel' : 'Add Student'}
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {/* Existing students */}
+                  {currentUser.students && currentUser.students.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {currentUser.students.map(s => (
+                        <div key={s.id} className="flex items-center gap-3 p-4 border border-gray-100 rounded-xl bg-gray-50">
+                          <div className="w-10 h-10 rounded-full bg-[#1a2d5a] flex items-center justify-center text-white text-sm font-bold shrink-0">
+                            {s.firstName[0]}{s.lastName[0]}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-800 text-sm truncate" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              {s.firstName} {s.lastName}
+                            </p>
+                            <p className="text-xs text-gray-500">{s.gradeLevel}</p>
+                          </div>
+                          <span className={`ml-auto shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full ${s.parentApproved ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {s.parentApproved ? 'Active' : 'Pending'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    !showAddStudent && (
+                      <p className="text-sm text-gray-400 text-center py-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        No students linked yet. Add one to get started.
+                      </p>
+                    )
+                  )}
+
+                  {/* Add student form */}
+                  {showAddStudent && (
+                    <div className="border border-[#1a2d5a]/20 rounded-xl p-5 space-y-4 bg-[#edf2f8]">
+                      <p className="text-sm font-semibold text-[#1a2d5a]" style={{ fontFamily: 'Merriweather, Georgia, serif' }}>Add a Student</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>First Name *</label>
+                          <input
+                            value={newStudent.firstName}
+                            onChange={e => setNewStudent(s => ({ ...s, firstName: e.target.value }))}
+                            placeholder="Jace"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1a2d5a]/20"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Last Name *</label>
+                          <input
+                            value={newStudent.lastName}
+                            onChange={e => setNewStudent(s => ({ ...s, lastName: e.target.value }))}
+                            placeholder="Smith"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1a2d5a]/20"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Grade Level</label>
+                          <select
+                            value={newStudent.gradeLevel}
+                            onChange={e => setNewStudent(s => ({ ...s, gradeLevel: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1a2d5a]/20"
+                          >
+                            <option value="">Select grade</option>
+                            {GRADE_LEVELS.map(g => <option key={g} value={g}>{g}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>Date of Birth</label>
+                          <input
+                            type="date"
+                            value={newStudent.dateOfBirth}
+                            onChange={e => setNewStudent(s => ({ ...s, dateOfBirth: e.target.value }))}
+                            max={new Date().toISOString().split('T')[0]}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1a2d5a]/20"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleAddStudent}
+                        disabled={!newStudent.firstName || !newStudent.lastName}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#1a2d5a] text-white text-sm rounded-xl hover:bg-[#142248] disabled:opacity-50 transition-colors font-semibold"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
+                        <Plus size={14} /> Save Student
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Recommended */}
             <div>

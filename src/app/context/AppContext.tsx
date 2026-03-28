@@ -158,6 +158,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (updates.pledgeTiers !== undefined) dbUpdates.pledge_tiers = updates.pledgeTiers;
     if (updates.updates !== undefined) dbUpdates.updates = updates.updates;
     if (updates.faqs !== undefined) dbUpdates.faqs = updates.faqs;
+    if (updates.studentId !== undefined) dbUpdates.student_id = updates.studentId || null;
 
     await supabase.from('campaigns').update(dbUpdates).eq('id', campaignId);
     // Optimistic update then refresh
