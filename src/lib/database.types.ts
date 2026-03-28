@@ -83,6 +83,15 @@ export interface DbCampaign {
   }[];
   creator_profile_id: string | null;
   student_id: string | null;
+  school: {
+    name?: string;
+    website?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    logo?: string;
+  };
   created_at: string;
 }
 

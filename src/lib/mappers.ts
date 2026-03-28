@@ -116,6 +116,7 @@ export function dbCampaignToCampaign(c: DbCampaign): Campaign {
     updates: c.updates ?? [],
     faqs: c.faqs ?? [],
     studentId: c.student_id ?? undefined,
+    school: c.school ?? {},
   };
 }
 
@@ -138,6 +139,7 @@ export function campaignToDbInsert(c: Campaign): Partial<DbCampaign> {
     updates: c.updates,
     faqs: c.faqs,
     student_id: c.studentId ?? null,
+    school: c.school ?? {},
   };
 }
 

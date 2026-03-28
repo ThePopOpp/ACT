@@ -36,6 +36,15 @@ export interface Campaign {
   updates: { id: string; date: string; title: string; content: string }[];
   faqs: { question: string; answer: string }[];
   studentId?: string;
+  school?: {
+    name?: string;
+    website?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    logo?: string;
+  };
 }
 
 export const CATEGORIES = [
