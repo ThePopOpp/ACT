@@ -215,40 +215,45 @@ export function EditCampaign() {
       logo: finalLogoUrl || undefined,
     };
 
-    await updateCampaign(campaignId!, {
-      title,
-      tagline,
-      story,
-      category,
-      goal: Number(goal),
-      image: finalImage,
-      daysLeft: Number(daysLeft),
-      studentId: selectedStudentId || undefined,
-      school: schoolData,
-      pledgeTiers: tiers
-        .filter(t => t.title.trim() && t.amount)
-        .map(t => ({
-          id: t.id,
-          title: t.title,
-          amount: Number(t.amount),
-          description: t.description,
-          perks: t.perks.split('\n').filter(Boolean),
-          claimed: t.claimed,
-          limit: t.limit ? Number(t.limit) : undefined,
-          eta: t.eta || 'TBD',
-        })),
-      // Keep creator in sync with school/parent info
-      creator: {
-        ...campaign.creator,
-        name: schoolName.trim() || `${parentFirst} ${parentLast}`,
-        bio: schoolName.trim() ? `${schoolName} — ${schoolCity}, ${schoolState}` : campaign.creator.bio,
-        location: schoolCity && schoolState ? `${schoolCity}, ${schoolState}` : campaign.creator.location,
-      },
-    });
-
-    setIsSaving(false);
-    toast.success('Campaign updated!');
-    navigate(`/campaign/${campaignId}`);
+    try {
+      await updateCampaign(campaignId!, {
+        title,
+        tagline,
+        story,
+        category,
+        goal: Number(goal),
+        image: finalImage,
+        daysLeft: Number(daysLeft),
+        studentId: selectedStudentId || undefined,
+        school: schoolData,
+        pledgeTiers: tiers
+          .filter(t => t.title.trim() && t.amount)
+          .map(t => ({
+            id: t.id,
+            title: t.title,
+            amount: Number(t.amount),
+            description: t.description,
+            perks: t.perks.split('\n').filter(Boolean),
+            claimed: t.claimed,
+            limit: t.limit ? Number(t.limit) : undefined,
+            eta: t.eta || 'TBD',
+          })),
+        // Keep creator in sync with school/parent info
+        creator: {
+          ...campaign.creator,
+          name: schoolName.trim() || `${parentFirst} ${parentLast}`,
+          bio: schoolName.trim() ? `${schoolName} — ${schoolCity}, ${schoolState}` : campaign.creator.bio,
+          location: schoolCity && schoolState ? `${schoolCity}, ${schoolState}` : campaign.creator.location,
+        },
+      });
+      toast.success('Campaign updated!');
+      navigate(`/campaign/${campaignId}`);
+    } catch (err) {
+      console.error('Save failed:', err);
+      toast.error('Failed to save campaign. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // ── Add new student ───────────────────────────────────────────────────────

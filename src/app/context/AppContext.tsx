@@ -158,10 +158,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (updates.pledgeTiers !== undefined) dbUpdates.pledge_tiers = updates.pledgeTiers;
     if (updates.updates !== undefined) dbUpdates.updates = updates.updates;
     if (updates.faqs !== undefined) dbUpdates.faqs = updates.faqs;
+    if (updates.daysLeft !== undefined) dbUpdates.days_left = updates.daysLeft;
+    if (updates.creator !== undefined) dbUpdates.creator = updates.creator;
     if (updates.studentId !== undefined) dbUpdates.student_id = updates.studentId || null;
     if (updates.school !== undefined) dbUpdates.school = updates.school;
 
-    await supabase.from('campaigns').update(dbUpdates).eq('id', campaignId);
+    const { error } = await supabase.from('campaigns').update(dbUpdates).eq('id', campaignId);
+    if (error) throw error;
     // Optimistic update then refresh
     setCampaigns(prev => prev.map(c => c.id === campaignId ? { ...c, ...updates } : c));
     refreshCampaigns();
