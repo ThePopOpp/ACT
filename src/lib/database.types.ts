@@ -82,6 +82,7 @@ export interface DbCampaign {
     answer: string;
   }[];
   creator_profile_id: string | null;
+  student_id: string | null;
   created_at: string;
 }
 

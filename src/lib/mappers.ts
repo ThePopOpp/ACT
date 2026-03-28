@@ -115,6 +115,7 @@ export function dbCampaignToCampaign(c: DbCampaign): Campaign {
     pledgeTiers: (c.pledge_tiers ?? []) as PledgeTier[],
     updates: c.updates ?? [],
     faqs: c.faqs ?? [],
+    studentId: c.student_id ?? undefined,
   };
 }
 
@@ -136,6 +137,7 @@ export function campaignToDbInsert(c: Campaign): Partial<DbCampaign> {
     pledge_tiers: c.pledgeTiers as DbCampaign['pledge_tiers'],
     updates: c.updates,
     faqs: c.faqs,
+    student_id: c.studentId ?? null,
   };
 }
 

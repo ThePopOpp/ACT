@@ -321,14 +321,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       avatar: `https://i.pravatar.cc/150?u=${data.email}`,
     });
 
-    // If parentEmail provided, trigger parent-approval email
-    if (result.success && data.parentEmail) {
-      sendEmail('parent-approval', {
-        studentFirstName: data.firstName,
-        studentLastName: data.lastName,
-        studentEmail: data.email,
-        parentEmail: data.parentEmail,
-      });
+    if (result.success) {
+      // Get the newly created auth session to find the student's profile ID
+      const { data: { session } } = await supabase.auth.getSession();
+      const studentAuthId = session?.user?.id ?? null;
+
+      // Resolve parent_id from parentEmail if provided
+      let resolvedParentId: string | null = null;
+      if (data.parentEmail) {
+        const { data: parentProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', data.parentEmail)
+          .eq('account_type', 'parent')
+          .single();
+        if (parentProfile) resolvedParentId = parentProfile.id;
+      }
+
+      // Insert into students table only if a parent was found —
+      // parent_id is NOT NULL in the schema, so skip for fully independent students
+      if (studentAuthId && resolvedParentId) {
+        await supabase.from('students').insert({
+          parent_id: resolvedParentId,
+          first_name: data.firstName,
+          last_name: data.lastName,
+          nickname: data.nickname ?? null,
+          grade_level: data.gradeLevel,
+          date_of_birth: data.dateOfBirth || null,
+          parent_approved: false,
+          email: data.email,
+          auth_user_id: studentAuthId,
+        });
+      }
+
+      // Send parent-approval email if parent was found
+      if (data.parentEmail) {
+        sendEmail('parent-approval', {
+          studentFirstName: data.firstName,
+          studentLastName: data.lastName,
+          studentEmail: data.email,
+          parentEmail: data.parentEmail,
+        });
+      }
     }
 
     return result;

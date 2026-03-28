@@ -123,6 +123,7 @@ export function CreateCampaign() {
   const [parentPhoto, setParentPhoto] = useState<File[]>([]);
 
   // ── Step 3: Student ──────────────────────────────────────────────────
+  const [selectedStudentId, setSelectedStudentId] = useState('');
   const [studentFirstName, setStudentFirstName] = useState('');
   const [studentLastName, setStudentLastName] = useState('');
   const [studentNickname, setStudentNickname] = useState('');
@@ -159,6 +160,26 @@ export function CreateCampaign() {
   const handlePublish = async () => {
     if (!termsAgreed) { toast.error('Please agree to the Terms of Service.'); return; }
     setLaunching(true);
+
+    // ── Resolve student_id ────────────────────────────────────────────────────
+    let finalStudentId: string | undefined;
+    if (currentUser?.accountType === 'parent') {
+      if (selectedStudentId) {
+        // Parent selected an existing student from their account
+        finalStudentId = selectedStudentId;
+      } else if (studentFirstName.trim() && studentLastName.trim()) {
+        // Parent manually entered a new student — save to students table first
+        const { data: inserted } = await supabase.from('students').insert({
+          parent_id: currentUser.id,
+          first_name: studentFirstName.trim(),
+          last_name: studentLastName.trim(),
+          nickname: studentNickname.trim() || null,
+          grade_level: gradeLevel || 'Unknown',
+          parent_approved: true,
+        }).select('id').single();
+        if (inserted) finalStudentId = inserted.id;
+      }
+    }
 
     // Upload campaign image if a file was selected
     let finalImageUrl = 'https://images.unsplash.com/photo-1769201153045-98827f62996b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080';
@@ -210,6 +231,7 @@ export function CreateCampaign() {
         })),
       updates: [],
       faqs: [],
+      studentId: finalStudentId,
     };
     addCampaign(newCampaign);
     setLaunching(false);
@@ -516,12 +538,13 @@ export function CreateCampaign() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                   {currentUser.students.map(s => {
-                    const selected = studentFirstName === s.firstName && studentLastName === s.lastName;
+                    const selected = selectedStudentId === s.id;
                     return (
                       <button
                         key={s.id}
                         type="button"
                         onClick={() => {
+                          setSelectedStudentId(s.id);
                           setStudentFirstName(s.firstName);
                           setStudentLastName(s.lastName);
                           setStudentNickname(s.nickname || '');
@@ -555,11 +578,11 @@ export function CreateCampaign() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>Student First Name</label>
-                <input value={studentFirstName} onChange={e => setStudentFirstName(e.target.value)} placeholder="Emma" className={inp} />
+                <input value={studentFirstName} onChange={e => { setStudentFirstName(e.target.value); setSelectedStudentId(''); }} placeholder="Emma" className={inp} />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>Student Last Name</label>
-                <input value={studentLastName} onChange={e => setStudentLastName(e.target.value)} placeholder="Mitchell" className={inp} />
+                <input value={studentLastName} onChange={e => { setStudentLastName(e.target.value); setSelectedStudentId(''); }} placeholder="Mitchell" className={inp} />
               </div>
             </div>
 

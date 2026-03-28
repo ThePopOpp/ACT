@@ -35,6 +35,7 @@ export interface Campaign {
   pledgeTiers: PledgeTier[];
   updates: { id: string; date: string; title: string; content: string }[];
   faqs: { question: string; answer: string }[];
+  studentId?: string;
 }
 
 export const CATEGORIES = [
