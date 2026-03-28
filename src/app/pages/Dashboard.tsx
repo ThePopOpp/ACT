@@ -53,7 +53,7 @@ export function Dashboard() {
     .map(p => ({ pledge: p, campaign: campaigns.find(c => c.id === p.campaignId) }))
     .filter(x => x.campaign);
 
-  const createdCampaigns = campaigns.filter(c => c.creator.id === 'u1').slice(0, 2);
+  const createdCampaigns = campaigns.filter(c => c.creator.id === currentUser?.id).slice(0, 2);
   const totalDonated = pledges.reduce((sum, p) => sum + p.amount, 0);
   const unreadNotifs = NOTIFICATIONS.filter(n => n.unread).length;
 

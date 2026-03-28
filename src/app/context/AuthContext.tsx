@@ -219,8 +219,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── Login ────────────────────────────────────────────────────────────────
   const login = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { success: false, message: error.message };
+    // Set currentUser immediately so the dashboard renders correctly on navigate
+    if (data.user) {
+      const user = await fetchProfileWithStudents(data.user.id);
+      setCurrentUser(user);
+    }
     return { success: true, message: 'Welcome back!' };
   };
 

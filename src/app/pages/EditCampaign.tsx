@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import {
   Save, ChevronLeft, Trash2, AlertCircle, GraduationCap,
@@ -282,7 +283,7 @@ export function EditCampaign() {
   };
 
   const inp = 'w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a2d5a]/20 focus:border-[#1a2d5a]/40 bg-white';
-  const sectionHeader = (title: string, icon?: React.ReactNode) => (
+  const sectionHeader = (title: string, icon?: ReactNode) => (
     <div className="bg-gradient-to-r from-[#1a2d5a] to-[#2a3d6a] px-8 py-5 flex items-center gap-3">
       {icon && <span className="text-white/70">{icon}</span>}
       <h2 className="text-white text-lg font-semibold" style={{ fontFamily: 'Merriweather, Georgia, serif' }}>{title}</h2>
