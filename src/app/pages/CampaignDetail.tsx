@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router';
 import {
   Clock, Users, Heart, Share2, ChevronRight, Check,
   MapPin, ExternalLink, MessageCircle, X, BookOpen,
-  Zap, Receipt,
+  Zap, Receipt, GraduationCap,
 } from 'lucide-react';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 import { useApp } from '../context/AppContext';
@@ -11,6 +11,16 @@ import { PledgeTier } from '../data/mockData';
 import { toast } from 'sonner';
 import { TaxDeductibleModal } from '../components/TaxDeductibleModal';
 import { ShareModal } from '../components/ShareModal';
+import { supabase } from '../../lib/supabase';
+
+interface StudentInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  nickname?: string | null;
+  gradeLevel: string;
+  avatar?: string | null;
+}
 
 const TABS = ['Story', 'Updates', 'Donors', 'FAQ'] as const;
 type Tab = typeof TABS[number];
@@ -433,8 +443,31 @@ export function CampaignDetail() {
   const [donateOpen, setDonateOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [student, setStudent] = useState<StudentInfo | null>(null);
 
   const campaign = campaigns.find(c => c.id === id);
+
+  useEffect(() => {
+    if (!campaign?.studentId) { setStudent(null); return; }
+    supabase
+      .from('students')
+      .select('id, first_name, last_name, nickname, grade_level, avatar')
+      .eq('id', campaign.studentId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setStudent({
+            id: data.id,
+            firstName: data.first_name,
+            lastName: data.last_name,
+            nickname: data.nickname,
+            gradeLevel: data.grade_level,
+            avatar: data.avatar,
+          });
+        }
+      });
+  }, [campaign?.studentId]);
+
   if (!campaign) return <Navigate to="/browse" />;
 
   const pct = Math.min(100, Math.round((campaign.raised / campaign.goal) * 100));
@@ -523,6 +556,38 @@ export function CampaignDetail() {
                 <ExternalLink size={16} />
               </Link>
             </div>
+
+            {/* Student card */}
+            {student && (
+              <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200">
+                {student.avatar ? (
+                  <img src={student.avatar} alt={`${student.firstName} ${student.lastName}`} className="w-14 h-14 rounded-xl object-cover shrink-0 border border-gray-100" />
+                ) : (
+                  <div className="w-14 h-14 rounded-xl bg-[#1a2d5a] flex items-center justify-center text-white font-bold text-lg shrink-0">
+                    {student.firstName[0]}{student.lastName[0]}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <GraduationCap size={13} className="text-[#c8202d] shrink-0" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#c8202d]" style={{ fontFamily: 'Inter, sans-serif' }}>Student</span>
+                  </div>
+                  <div className="text-[#1a2d5a] text-sm font-bold" style={{ fontFamily: 'Merriweather, Georgia, serif' }}>
+                    {student.firstName} {student.lastName}
+                    {student.nickname && <span className="text-gray-400 font-normal ml-1">"{student.nickname}"</span>}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500 flex-wrap" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span>{student.gradeLevel}</span>
+                    {campaign.school?.name && (
+                      <>
+                        <span className="text-gray-300">·</span>
+                        <span className="flex items-center gap-1"><MapPin size={10} />{campaign.school.name}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tabs */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

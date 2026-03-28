@@ -124,7 +124,8 @@ async function fetchProfileWithStudents(userId: string): Promise<AuthUser | null
   if (error || !profile) return null;
 
   let students: StudentAccount[] | undefined;
-  if ((profile as DbProfile).account_type === 'parent') {
+  const p = profile as DbProfile;
+  if (p.account_type === 'parent' || p.role === 'super_admin' || p.role === 'admin') {
     const { data: stuRows } = await supabase
       .from('students')
       .select('*')
